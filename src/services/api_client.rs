@@ -17,6 +17,8 @@ use crate::core::config_schema::Config;
 use crate::core::rate_limiter::RateLimiter;
 use crate::data::store::EndpointRecord;
 
+const DEFAULT_USER_AGENT: &str = concat!("github-mcp/", env!("CARGO_PKG_VERSION"));
+
 fn parameters_of(endpoint: &EndpointRecord) -> Vec<Value> {
     endpoint
         .input_schema
@@ -127,6 +129,11 @@ impl ApiClient {
 
         let mut headers: HashMap<String, String> = HashMap::new();
         headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert(
+            "Accept".to_string(),
+            "application/vnd.github+json".to_string(),
+        );
+        headers.insert("User-Agent".to_string(), DEFAULT_USER_AGENT.to_string());
         for (name, value) in pick_by_location(endpoint, args_map, "header") {
             headers.insert(name, value);
         }
@@ -246,5 +253,59 @@ mod tests {
 
         let headers = pick_by_location(&endpoint, &args, "header");
         assert_eq!(headers, vec![("X-Trace-Id".to_string(), "abc".to_string())]);
+    }
+
+    #[tokio::test]
+    async fn adds_headers_required_by_github() {
+        let endpoint = endpoint("/user", Value::Null);
+        let config = Config {
+            url: "https://api.github.com".to_string(),
+            auth_method: crate::core::config_schema::AuthMethod::Pat,
+            api_version: "gh-2026-03-10".to_string(),
+            log_level: "info".to_string(),
+            rate_limit: 100,
+            timeout_ms: 30_000,
+            cache_size: 500,
+            retry_attempts: 0,
+            transport: crate::core::config_schema::Transport::Stdio,
+            host: "127.0.0.1".to_string(),
+            port: 3000,
+            cors_allow: None,
+        };
+        let mut auth_manager = AuthManager::new(crate::core::config_schema::AuthMethod::Pat);
+        let mut credentials = crate::auth::auth_strategy::Credentials::new();
+        credentials.insert("token".to_string(), "abc".to_string());
+        auth_manager.set_credentials(credentials);
+
+        let mut headers = HashMap::new();
+        headers.insert("Content-Type".to_string(), "application/json".to_string());
+        headers.insert(
+            "Accept".to_string(),
+            "application/vnd.github+json".to_string(),
+        );
+        headers.insert("User-Agent".to_string(), DEFAULT_USER_AGENT.to_string());
+        let headers = auth_manager
+            .apply_auth_headers(
+                headers,
+                &endpoint.method,
+                &config.url,
+                config.transport,
+                None,
+            )
+            .await
+            .unwrap();
+
+        assert_eq!(
+            headers.get("User-Agent").map(String::as_str),
+            Some(DEFAULT_USER_AGENT)
+        );
+        assert_eq!(
+            headers.get("Accept").map(String::as_str),
+            Some("application/vnd.github+json")
+        );
+        assert_eq!(
+            headers.get("Authorization").map(String::as_str),
+            Some("Bearer abc")
+        );
     }
 }

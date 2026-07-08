@@ -11,9 +11,17 @@ use github_mcp::core::config_schema::Transport;
 pub async fn run() -> anyhow::Result<()> {
     let config = load_config(serde_json::Map::new())?;
     let mut auth_manager = AuthManager::new(config.auth_method);
-    let headers = auth_manager
+    let mut headers = auth_manager
         .apply_auth_headers(HashMap::new(), "GET", &config.url, Transport::Stdio, None)
         .await?;
+    headers.insert(
+        "Accept".to_string(),
+        "application/vnd.github+json".to_string(),
+    );
+    headers.insert(
+        "User-Agent".to_string(),
+        format!("github-mcp/{}", env!("CARGO_PKG_VERSION")),
+    );
 
     let url = build_api_url(&config.url, "/", &[])?;
     let client = reqwest::Client::new();
@@ -25,9 +33,12 @@ pub async fn run() -> anyhow::Result<()> {
     }
 
     match request.send().await {
-        Ok(_) => {
+        Ok(response) if response.status().is_success() => {
             println!("connection OK");
             Ok(())
+        }
+        Ok(response) => {
+            anyhow::bail!("connection failed: HTTP {}", response.status());
         }
         Err(err) => {
             eprintln!("connection failed: {err}");
