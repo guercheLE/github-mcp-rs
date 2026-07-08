@@ -35,6 +35,76 @@ github-mcp start                              # stdio transport (default)
 github-mcp http --host 127.0.0.1 --port 3000  # HTTP transport
 ```
 
+### Other Commands
+
+```bash
+github-mcp test-connection   # verify the configured API URL and credentials are reachable
+github-mcp config            # print the resolved configuration (secrets redacted)
+github-mcp version           # print the installed version
+github-mcp versions          # list the API spec versions bundled with this project
+```
+
+This project bundles semantic stores for multiple GitHub API spec versions (GitHub.com, GHEC, and several GHES releases). Set `GITHUB_MCP_API_VERSION` (or the `api_version` field in your config file) to select one; `github-mcp versions` lists the available labels and which one is active.
+
+## Observability & Resilience
+
+### Structured logging
+
+`GITHUB_MCP_LOG_LEVEL` (default `info`) sets the log level. Logs always go to stderr — stdout is reserved for the MCP stdio transport's JSON-RPC frames — as structured JSON, switching to pretty-printed text automatically when stderr is an interactive TTY (`src/core/logger.rs`, `src/core/log_transport.rs`).
+
+```bash
+GITHUB_MCP_LOG_LEVEL=debug github-mcp start
+```
+
+Secret redaction (`src/core/sanitizer.rs`) replaces any JSON key containing `password`/`token`/`secret`/`authorization`/`api_key`/`credential` with `[REDACTED]`. It isn't wired in as an automatic log filter; today the only caller is `github-mcp config`, which sanitizes the resolved configuration before printing it.
+
+### OpenTelemetry tracing
+
+Every Harness Server start (`start` or `http`) builds an OTLP/HTTP trace exporter unconditionally — there's no flag to turn it off (`src/core/otel.rs`). Point it at a collector with the standard OTel environment variables:
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=http://otel-collector:4318 github-mcp http
+```
+
+If `OTEL_EXPORTER_OTLP_ENDPOINT`/`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` aren't set, the exporter defaults to `http://localhost:4318/v1/traces`; if nothing is listening there, export attempts just fail silently in the background rather than crashing the server. Only traces are exported this way — there's no OpenTelemetry metrics pipeline.
+
+### Metrics
+
+`GET /metrics` (HTTP transport only; no stdio equivalent) returns Prometheus text format (`src/http/metrics.rs`). Currently it tracks a single counter, `http_requests_total`.
+
+### Retries, timeout, rate limiting, circuit breaker
+
+Set via env var (or the equivalent key in a `github-mcp.config.yml`):
+
+```bash
+GITHUB_MCP_RATE_LIMIT=20        # max outbound API calls per rolling 1s window (default 100; window is fixed, not configurable)
+GITHUB_MCP_TIMEOUT_MS=10000     # per-request timeout against the target API (default 30000)
+GITHUB_MCP_RETRY_ATTEMPTS=5     # immediate retries after a transport-level failure, no backoff (default 3)
+```
+
+Two things exist in the code but currently have no operator-facing knob:
+
+- The **circuit breaker** (`src/core/circuit_breaker.rs`) wraps every outbound API call and opens after 5 consecutive failures, resetting after 30 seconds — both values are hardcoded (`CircuitBreaker::default()`), with no env var or config field to change them.
+- `GITHUB_MCP_CACHE_SIZE` / `cache_size` (default `500`) is accepted and parsed but has no effect: `src/core/cache_manager.rs` exists but isn't wired into the request path.
+
+### Health checks
+
+`HealthCheckManager` (`src/core/health_check_manager.rs`) runs registered checks every 30 seconds with a 5-second timeout — both hardcoded. Today the only registered check is `store` (confirms `mcp_store.db` opens).
+
+```bash
+github-mcp http --port 3000 &
+curl http://127.0.0.1:3000/healthz   # {"status":"Healthy","components":1} or 503 if unhealthy
+github-mcp test-connection           # separate, lighter check: sends a real request to the configured API URL
+```
+
+`/healthz` only exists under HTTP transport. For stdio deployments (no HTTP endpoint to probe), the separate `github-mcp-healthcheck` binary — used by the Dockerfile's `HEALTHCHECK` instruction — just checks that `mcp_store.db` is present and readable; it does not check API connectivity.
+
+### Credential storage
+
+`github-mcp setup` always saves your credentials to `src/core/credential_storage.rs`'s store, independent of whichever `.env`/`config.json`/CLI-invocation option you pick for the non-secret settings (URL, auth method, API version, transport). It tries the OS-native keychain first (macOS Keychain / Windows Credential Manager / Linux Secret Service, via the `keyring` crate); if no backend is available (e.g. no D-Bus secret-service daemon in a minimal container), it falls back automatically to an AES-256-GCM-encrypted file at `~/.github-mcp/credentials.enc` (mode `0600`, directory `0700` on Unix), keyed from `$HOME` so the fallback file isn't portable to another machine.
+
+`stdio` transport loads credentials from this store on demand at runtime. `http` transport never touches it: every request must carry its own credential header (which one depends on the configured auth method — `github-mcp setup` prints the exact shape for your deployment), and a request without one is a hard error rather than a fallback to local config/keychain.
+
 ## Testing
 
 ```bash
@@ -55,6 +125,10 @@ cargo run --release --features profiling -- search "test query"   # heap profili
 ```
 
 `profile/bottleneck-report.md` combines coverage gaps with the hottest CPU functions in one small text file — paste it into an LLM (or hand it to another tool) to find and fix bottlenecks. Requires [samply](https://github.com/mstange/samply) (`cargo install samply`).
+
+## License
+
+MIT — see [LICENSE](LICENSE).
 
 ---
 
