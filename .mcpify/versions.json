@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "language": "rust",
+  "display_name": "GitHub v3 REST API",
+  "project_name": "github-mcp",
+  "default_version": "gh-2026-03-10",
+  "versions": {
+    "gh-2026-03-10": {
+      "db_file": "mcp_store.db",
+      "schemas_file": "src/validation/generated_schemas.json.zst",
+      "source": "/tmp/github-mcp-specs/gh-2026-03-10.normalized.yaml",
+      "added_at": 1783477358
+    },
+    "ghec-2026-03-10": {
+      "db_file": "mcp_store_vghec-2026-03-10.db",
+      "schemas_file": "src/validation/generated_schemas_vghec-2026-03-10.json.zst",
+      "source": "/tmp/github-mcp-specs/ghec-2026-03-10.normalized.yaml",
+      "added_at": 1783477361
+    },
+    "ghes-3.21": {
+      "db_file": "mcp_store_vghes-3.21.db",
+      "schemas_file": "src/validation/generated_schemas_vghes-3.21.json.zst",
+      "source": "/tmp/github-mcp-specs/ghes-3.21.normalized.yaml",
+      "added_at": 1783477363
+    },
+    "ghes-3.20": {
+      "db_file": "mcp_store_vghes-3.20.db",
+      "schemas_file": "src/validation/generated_schemas_vghes-3.20.json.zst",
+      "source": "/tmp/github-mcp-specs/ghes-3.20.normalized.yaml",
+      "added_at": 1783477365
+    },
+    "ghes-3.19": {
+      "db_file": "mcp_store_vghes-3.19.db",
+      "schemas_file": "src/validation/generated_schemas_vghes-3.19.json.zst",
+      "source": "/tmp/github-mcp-specs/ghes-3.19.normalized.yaml",
+      "added_at": 1783477368
+    },
+    "ghes-2.22": {
+      "db_file": "mcp_store_vghes-2.22.db",
+      "schemas_file": "src/validation/generated_schemas_vghes-2.22.json.zst",
+      "source": "/tmp/github-mcp-specs/ghes-2.22.normalized.yaml",
+      "added_at": 1783477406
+    }
+  }
+}

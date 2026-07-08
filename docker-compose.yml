@@ -1,0 +1,23 @@
+services:
+  github-mcp:
+    build: .
+    image: github-mcp:latest
+    env_file:
+      - .env
+    volumes:
+      - ~/.github-mcp:/root/.github-mcp
+    stdin_open: true
+    tty: true
+
+  github-mcp-http:
+    build: .
+    image: github-mcp:latest
+    env_file:
+      - .env
+    environment:
+      GITHUB_MCP_TRANSPORT: http
+      GITHUB_MCP_PORT: "3000"
+    ports:
+      - "3000:3000"
+    volumes:
+      - ~/.github-mcp:/root/.github-mcp
