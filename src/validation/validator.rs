@@ -39,7 +39,9 @@ struct OperationSchemas {
 fn schemas_zst_for(api_version: &str) -> Option<&'static [u8]> {
     match api_version {
         "gh-2026-03-10" => Some(include_bytes!("generated_schemas.json.zst")),
-        "ghec-2026-03-10" => Some(include_bytes!("generated_schemas_vghec-2026-03-10.json.zst")),
+        "ghec-2026-03-10" => Some(include_bytes!(
+            "generated_schemas_vghec-2026-03-10.json.zst"
+        )),
         "ghes-3.21" => Some(include_bytes!("generated_schemas_vghes-3.21.json.zst")),
         "ghes-3.20" => Some(include_bytes!("generated_schemas_vghes-3.20.json.zst")),
         "ghes-3.19" => Some(include_bytes!("generated_schemas_vghes-3.19.json.zst")),

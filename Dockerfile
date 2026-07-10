@@ -18,6 +18,11 @@ RUN apt-get update \
 COPY Cargo.toml Cargo.lock* ./
 COPY src ./src
 COPY mcp_store.db ./mcp_store.db
+COPY mcp_store_vghec-2026-03-10.db ./mcp_store_vghec-2026-03-10.db
+COPY mcp_store_vghes-3.21.db ./mcp_store_vghes-3.21.db
+COPY mcp_store_vghes-3.20.db ./mcp_store_vghes-3.20.db
+COPY mcp_store_vghes-3.19.db ./mcp_store_vghes-3.19.db
+COPY mcp_store_vghes-2.22.db ./mcp_store_vghes-2.22.db
 
 RUN cargo build --release
 

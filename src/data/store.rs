@@ -33,7 +33,10 @@ pub const VERSION_STORE_FILES: &[(&str, &str)] = &[
 
 const VERSION_STORE_BYTES: &[(&str, &[u8])] = &[
     ("gh-2026-03-10", include_bytes!("../../mcp_store.db")),
-    ("ghec-2026-03-10", include_bytes!("../../mcp_store_vghec-2026-03-10.db")),
+    (
+        "ghec-2026-03-10",
+        include_bytes!("../../mcp_store_vghec-2026-03-10.db"),
+    ),
     ("ghes-3.21", include_bytes!("../../mcp_store_vghes-3.21.db")),
     ("ghes-3.20", include_bytes!("../../mcp_store_vghes-3.20.db")),
     ("ghes-3.19", include_bytes!("../../mcp_store_vghes-3.19.db")),
