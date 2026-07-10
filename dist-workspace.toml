@@ -10,13 +10,13 @@ ci = "github"
 # The installers to generate for each app
 installers = ["shell", "powershell"]
 # Target platforms to build apps for (Rust target-triple syntax).
-# x86_64-apple-darwin (Intel Mac) is known-broken: ort-sys 2.0.0-rc.12
-# ships no prebuilt ONNX Runtime binary for that target ("ort does not
-# provide prebuilt binaries for the target `x86_64-apple-darwin`"), and
-# there's no source-build fallback wired up. Left in the target list
-# (rather than dropped) as a visible signal until that's addressed —
-# every other target still builds and publishes independently.
-targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
+# x86_64-apple-darwin (Intel Mac) is intentionally excluded: ort-sys
+# 2.0.0-rc.12 ships no prebuilt ONNX Runtime binary for that target
+# ("ort does not provide prebuilt binaries for the target
+# `x86_64-apple-darwin`"), and there's no source-build fallback wired
+# up. Re-add once ort ships one, or once this crate switches ONNX
+# Runtime backends.
+targets = ["aarch64-apple-darwin", "x86_64-unknown-linux-gnu", "x86_64-pc-windows-msvc"]
 # Path that installers should place binaries in
 install-path = "CARGO_HOME"
 # Whether to install an updater program
