@@ -25,10 +25,22 @@ Interactively collects the API URL and the credentials your chosen auth method n
 ### Terminal Client (default)
 
 ```bash
-github-mcp search "create an issue"
-github-mcp get <operationId>
-github-mcp call <operationId> --some-arg value
+# 1. Semantic search over all 1,194 operations in the default GitHub.com store
+github-mcp search "get an issue from a repository"
+
+# 2. Inspect the exact method, path, and input/output schemas before calling
+github-mcp get issues/get
+# method: GET
+# path: /repos/{owner}/{repo}/issues/{issue_number}
+
+# 3. Path parameters are fields in one --args JSON object
+github-mcp call issues/get --args '{"owner":"octocat","repo":"Hello-World","issue_number":1347}'
+
+# Request payloads are nested under body in that same object
+github-mcp call issues/create --args '{"owner":"octocat","repo":"Hello-World","body":{"title":"Found a bug","body":"The reproduction steps are...","labels":["bug"]}}'
 ```
+
+`call` accepts one JSON object through `--args` (or `-a`), not arbitrary per-operation CLI flags. Use `get <operationId>` to see the accepted field names and which ones are required.
 
 ### Harness Server
 
