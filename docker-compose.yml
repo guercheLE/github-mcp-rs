@@ -2,6 +2,7 @@ services:
   github-mcp:
     build: .
     image: github-mcp:latest
+    command: ["start"]
     env_file:
       - .env
     volumes:
@@ -12,6 +13,7 @@ services:
   github-mcp-http:
     build: .
     image: github-mcp:latest
+    command: ["http", "--host", "0.0.0.0", "--port", "3000"]
     env_file:
       - .env
     environment:
