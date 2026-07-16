@@ -18,7 +18,9 @@ Prebuilt binaries for macOS, Linux, and Windows are attached to each [GitHub Rel
 cargo run -- setup
 ```
 
-Interactively collects the API URL and the credentials your chosen auth method needs, then lets you persist them as a `.env` file, a `config.json` file, or a ready-to-run CLI invocation.
+Interactively collects the API URL and the credentials your chosen auth method needs, then lets you persist them as a `.env` file, a `config.yml` file (local `./github-mcp.config.yml` or global `~/.github-mcp/config.yml`), or a ready-to-run CLI invocation.
+
+**GHES deployments must append `/api/v3` to `GITHUB_MCP_URL`** (e.g. `https://ghe.example.com/api/v3`). `api.github.com`/GHEC deployments need no suffix — use the bare host (e.g. `https://api.github.com`).
 
 ## Usage
 
@@ -115,7 +117,7 @@ github-mcp test-connection           # separate, lighter check: sends a real req
 
 ### Credential storage
 
-`github-mcp setup` always saves your credentials to `src/core/credential_storage.rs`'s store, independent of whichever `.env`/`config.json`/CLI-invocation option you pick for the non-secret settings (URL, auth method, API version, transport). It tries the OS-native keychain first (macOS Keychain / Windows Credential Manager / Linux Secret Service, via the `keyring` crate); if no backend is available (e.g. no D-Bus secret-service daemon in a minimal container), it falls back automatically to an AES-256-GCM-encrypted file at `~/.github-mcp/credentials.enc` (mode `0600`, directory `0700` on Unix), keyed from `$HOME` so the fallback file isn't portable to another machine.
+`github-mcp setup` always saves your credentials to `src/core/credential_storage.rs`'s store, independent of whichever `.env`/`config.yml`/CLI-invocation option you pick for the non-secret settings (URL, auth method, API version, transport). It tries the OS-native keychain first (macOS Keychain / Windows Credential Manager / Linux Secret Service, via the `keyring` crate); if no backend is available (e.g. no D-Bus secret-service daemon in a minimal container), it falls back automatically to an AES-256-GCM-encrypted file at `~/.github-mcp/credentials.enc` (mode `0600`, directory `0700` on Unix), keyed from `$HOME` so the fallback file isn't portable to another machine.
 
 `stdio` transport loads credentials from this store on demand at runtime. `http` transport never touches it: every request must carry its own credential header (which one depends on the configured auth method — `github-mcp setup` prints the exact shape for your deployment), and a request without one is a hard error rather than a fallback to local config/keychain.
 

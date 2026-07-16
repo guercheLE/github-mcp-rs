@@ -11,12 +11,14 @@ const ENV_PREFIX: &str = "GITHUB_MCP";
 const CONFIG_DIR_NAME: &str = ".github-mcp";
 const LOCAL_CONFIG_FILE: &str = "github-mcp.config.yml";
 
-/// Env vars this crate reads directly (`HOME`) rather than via a `dirs`-style
-/// crate: keeps the dependency list matched to the toolchain table, at the
-/// cost of `~` resolution only working where `$HOME` is set (true for every
-/// deployment target this project's Dockerfile/docker-compose.yml target).
-fn home_dir() -> PathBuf {
+/// Env vars this crate reads directly (`HOME`/`USERPROFILE`) rather than via
+/// a `dirs`-style crate: keeps the dependency list matched to the toolchain
+/// table. Falls back to `USERPROFILE` (Windows, where `HOME` is typically
+/// unset) and finally `.` so `~` resolution never silently degrades to an
+/// unrelated directory on an unexpected platform.
+fn resolve_home_dir() -> PathBuf {
     std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
         .map(PathBuf::from)
         .unwrap_or_else(|| PathBuf::from("."))
 }
@@ -70,7 +72,7 @@ pub fn load_config(cli_flags: Map<String, Value>) -> Result<Config, McpifyError>
         cli_flags,
         env_overrides(),
         read_yaml_if_exists(&PathBuf::from(LOCAL_CONFIG_FILE)),
-        read_yaml_if_exists(&home_dir().join(CONFIG_DIR_NAME).join("config.yml")),
+        read_yaml_if_exists(&resolve_home_dir().join(CONFIG_DIR_NAME).join("config.yml")),
         read_yaml_if_exists(&PathBuf::from("/etc/github-mcp/config.yml")),
         read_yaml_if_exists(&install_dir.join("config.yml")),
     ];

@@ -136,10 +136,36 @@ async fn prompt_credentials(auth_method: AuthMethod) -> anyhow::Result<HashMap<S
     .await?
 }
 
-async fn prompt_persistence(env: &HashMap<String, String>) -> anyhow::Result<()> {
+/// Where `load_config` (`src/core/config_manager.rs`) actually looks for a
+/// config file, in cascade order: local-cwd first, then the home-dir tier.
+/// Kept in lockstep with that module's `LOCAL_CONFIG_FILE`/`CONFIG_DIR_NAME`
+/// constants so the file this wizard writes is one `load_config` will
+/// actually read back on the next run.
+const LOCAL_CONFIG_FILE: &str = "github-mcp.config.yml";
+const CONFIG_DIR_NAME: &str = ".github-mcp";
+
+fn resolve_home_dir() -> std::path::PathBuf {
+    std::env::var_os("HOME")
+        .or_else(|| std::env::var_os("USERPROFILE"))
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+}
+
+/// Persists the settings the operator just chose. `env` (env-var-prefixed
+/// keys, credentials included) backs the `.env` file and the printed CLI
+/// invocation. `config_fields` (flat, unprefixed keys matching `Config`'s
+/// own field names — no credentials, which always go through
+/// `save_credential`'s keychain/file path instead) backs the YAML config
+/// file option, written to whichever path `load_config`'s cascade actually
+/// reads: the local-cwd file if the operator picks "local", or
+/// `~/.github-mcp/config.yml` if they pick "global".
+async fn prompt_persistence(
+    env: &HashMap<String, String>,
+    config_fields: &HashMap<String, String>,
+) -> anyhow::Result<()> {
     let choices = vec![
         "Write a .env file",
-        "Write a config.json file",
+        "Write a config.yml file",
         "Print a ready-to-run CLI invocation (nothing written to disk)",
     ];
     let selection = tokio::task::spawn_blocking(move || {
@@ -157,9 +183,28 @@ async fn prompt_persistence(env: &HashMap<String, String>) -> anyhow::Result<()>
             std::fs::write(".env", format!("{contents}\n"))?;
             println!("Wrote .env");
         }
-        "Write a config.json file" => {
-            std::fs::write("config.json", serde_json::to_string_pretty(env)?)?;
-            println!("Wrote config.json");
+        "Write a config.yml file" => {
+            let tier_choices = vec![
+                "Local (this directory only — ./github-mcp.config.yml)",
+                "Global (all runs for this user — ~/.github-mcp/config.yml)",
+            ];
+            let tier_selection = tokio::task::spawn_blocking(move || {
+                inquire::Select::new("Save this config for just this project, or globally?", tier_choices)
+                    .prompt()
+            })
+            .await??;
+
+            let yaml = serde_yaml::to_string(config_fields)?;
+            if tier_selection.starts_with("Local") {
+                std::fs::write(LOCAL_CONFIG_FILE, &yaml)?;
+                println!("Wrote {LOCAL_CONFIG_FILE}");
+            } else {
+                let dir = resolve_home_dir().join(CONFIG_DIR_NAME);
+                std::fs::create_dir_all(&dir)?;
+                let path = dir.join("config.yml");
+                std::fs::write(&path, &yaml)?;
+                println!("Wrote {}", path.display());
+            }
         }
         _ => {
             let flags = env
@@ -268,7 +313,25 @@ pub async fn run_setup_wizard() -> anyhow::Result<()> {
         env.insert(format!("GITHUB_MCP_{}", to_env_key(key)), value.clone());
     }
 
-    prompt_persistence(&env).await?;
+    // Flat, unprefixed keys matching `Config`'s own field names — the shape
+    // `load_config`'s YAML layers expect. Deliberately excludes credentials
+    // (those only ever go through `save_credential`'s keychain/file path).
+    let mut config_fields: HashMap<String, String> = HashMap::new();
+    config_fields.insert("url".to_string(), env["GITHUB_MCP_URL"].clone());
+    config_fields.insert(
+        "auth_method".to_string(),
+        env["GITHUB_MCP_AUTH_METHOD"].clone(),
+    );
+    config_fields.insert(
+        "api_version".to_string(),
+        env["GITHUB_MCP_API_VERSION"].clone(),
+    );
+    config_fields.insert(
+        "transport".to_string(),
+        env["GITHUB_MCP_TRANSPORT"].clone(),
+    );
+
+    prompt_persistence(&env, &config_fields).await?;
     print_mcp_client_config(transport, auth_method, &env);
 
     let run_command = match transport {

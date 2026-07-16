@@ -13,6 +13,7 @@
 
 use std::path::{Path, PathBuf};
 
+use anyhow::Context;
 use github_mcp::data::store::{VERSION_STORE_FILES, open_store_read_write};
 use github_mcp::services::embedding_service::embed;
 
@@ -33,6 +34,13 @@ fn vector_to_le_bytes(vector: &[f32]) -> Vec<u8> {
 
 /// Populates one store file's `semantic_endpoints` table in place,
 /// returning how many operations were (re)indexed.
+///
+/// A failure computing/inserting any single row's embedding (`embed(...)?`,
+/// `insert.execute(...)?`) propagates immediately via `?` — this
+/// deliberately does not catch-and-skip per-row errors, since a silently
+/// skipped row is exactly the "populated but missing embeddings" bug this
+/// binary exists to eliminate (see `check_completeness` below for the
+/// belt-and-suspenders row-count verification after the fact).
 fn populate_one(path: &Path) -> anyhow::Result<usize> {
     let conn = open_store_read_write(path)?;
 
@@ -64,6 +72,7 @@ fn populate_one(path: &Path) -> anyhow::Result<usize> {
     // an acceptable trade for a one-time setup script.
     let count = rows.len();
     for row in rows {
+        let operation_id = row.operation_id.clone();
         let text = [
             Some(row.method),
             Some(row.path),
@@ -74,34 +83,73 @@ fn populate_one(path: &Path) -> anyhow::Result<usize> {
         .flatten()
         .collect::<Vec<_>>()
         .join(" ");
-        let vector = embed(&text)?;
-        delete.execute(rusqlite::params![row.operation_id])?;
-        insert.execute(rusqlite::params![
-            row.operation_id,
-            vector_to_le_bytes(&vector)
-        ])?;
+        let vector = embed(&text)
+            .with_context(|| format!("failed to compute embedding for '{operation_id}'"))?;
+        delete.execute(rusqlite::params![operation_id])?;
+        insert
+            .execute(rusqlite::params![operation_id, vector_to_le_bytes(&vector)])
+            .with_context(|| format!("failed to insert embedding for '{operation_id}'"))?;
     }
+
+    drop(select);
+    drop(delete);
+    drop(insert);
+    check_completeness(&conn, path)?;
 
     Ok(count)
 }
 
-/// Which store file(s) to populate: bare invocation targets just
-/// `mcp_store.db` (the default version), matching every deployment that
-/// only ever ships that one file (this project's own Dockerfile
-/// included); an explicit path targets exactly that file; `--all` walks
-/// every version this project's ledger knows about
-/// (`VERSION_STORE_FILES`) — the one-time local backfill needed after
-/// `mcpify add-version` adds a new version file, since each version's
-/// `.db` gets its own independent `semantic_endpoints` table.
+/// Fix 8b: a store can end up with `endpoints` rows but no matching
+/// `semantic_endpoints` rows if embedding generation/insertion is silently
+/// skipped or partially fails for some rows without raising — this must
+/// never pass silently. Compares row counts after populating and fails
+/// loudly (returning an error, which `main` turns into a non-zero exit)
+/// identifying the store and exactly which operation IDs are missing.
+fn check_completeness(conn: &rusqlite::Connection, path: &Path) -> anyhow::Result<()> {
+    let endpoints_count: usize =
+        conn.query_row("SELECT COUNT(*) FROM endpoints", [], |row| row.get(0))?;
+    let semantic_count: usize = conn.query_row("SELECT COUNT(*) FROM semantic_endpoints", [], |row| {
+        row.get(0)
+    })?;
+
+    if endpoints_count != semantic_count {
+        let mut stmt = conn.prepare(
+            "SELECT operation_id FROM endpoints
+             WHERE operation_id NOT IN (SELECT operation_id FROM semantic_endpoints)",
+        )?;
+        let missing: Vec<String> = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<Result<_, _>>()?;
+        anyhow::bail!(
+            "'{}' is incomplete: {endpoints_count} endpoint(s) but only {semantic_count} \
+             semantic_endpoints row(s); missing operation_id(s): {}",
+            path.display(),
+            missing.join(", ")
+        );
+    }
+
+    Ok(())
+}
+
+/// Which store file(s) to populate: bare invocation targets **every**
+/// version this project's ledger knows about (`VERSION_STORE_FILES`) — the
+/// safe default, since a store left at 0 `semantic_endpoints` rows makes
+/// `search` silently return `[]` for that `api_version` with no error
+/// anywhere (the original bug: only the default-version file ever got
+/// populated by a bare invocation, leaving every other version's store at
+/// 0 `semantic_endpoints` rows). An explicit path argument still targets
+/// exactly that one file, for a fast single-store re-run. `--all` is kept
+/// as an accepted synonym for the (now-default) full-ledger behavior, so
+/// existing callers (this project's own `Dockerfile`) keep working
+/// unchanged.
 fn targets() -> Vec<PathBuf> {
     let mut args = std::env::args().skip(1);
     match args.next().as_deref() {
-        Some("--all") => VERSION_STORE_FILES
+        Some("--all") | None => VERSION_STORE_FILES
             .iter()
             .map(|(_, file)| PathBuf::from(file))
             .collect(),
         Some(path) => vec![PathBuf::from(path)],
-        None => vec![PathBuf::from("mcp_store.db")],
     }
 }
 
