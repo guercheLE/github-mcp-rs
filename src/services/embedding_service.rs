@@ -4,12 +4,17 @@
 // (indexing time) and tools/search_tool.rs (live query time) both call
 // `embed()` from here, so the two are structurally guaranteed to share the
 // same model and vector space — see the plan's embeddings decision.
-// `all-mpnet-base-v2` at its native 768 dimensions, matching
-// `mcp_store.db`'s `semantic_endpoints` schema exactly (mcpify's shared
-// pipeline hard-codes `FLOAT[768]`) and the same model
-// `targets::typescript`'s `@xenova/transformers`-based embedding-service.ts
-// uses, so `-l rust` and `-l typescript` output are search-behavior
-// equivalent for the same spec.
+// `all-MiniLM-L6-v2` at its native 384 dimensions, matching
+// `mcp_store.db`'s `semantic_endpoints` schema exactly (`FLOAT[384]`).
+// Switched from `all-mpnet-base-v2` (768-dim) so the packaged crate's
+// embedded stores fit under crates.io's 10MiB upload limit even at max
+// zstd compression — see the "switch to all-MiniLM-L6-v2" fix.
+//
+// This intentionally diverges from `targets::typescript`'s
+// `@xenova/transformers`-based embedding-service.ts, which still uses
+// `all-mpnet-base-v2`/768 dims — `-l rust` and `-l typescript` output are
+// no longer search-behavior equivalent for the same spec as a result of
+// this crate-size-driven change.
 
 use std::sync::{Mutex, OnceLock};
 
@@ -24,13 +29,13 @@ fn model() -> &'static Mutex<TextEmbedding> {
         // failure mode: an unrecoverable startup error either way if the
         // model can't be fetched/loaded.
         Mutex::new(
-            TextEmbedding::try_new(TextInitOptions::new(EmbeddingModel::AllMpnetBaseV2))
-                .expect("failed to load the all-mpnet-base-v2 embedding model"),
+            TextEmbedding::try_new(TextInitOptions::new(EmbeddingModel::AllMiniLML6V2))
+                .expect("failed to load the all-MiniLM-L6-v2 embedding model"),
         )
     })
 }
 
-/// Computes a 768-dim embedding vector for `text`, mean-pooled and
+/// Computes a 384-dim embedding vector for `text`, mean-pooled and
 /// normalized (fastembed's default behavior for this model, replicating
 /// the sentence-transformers reference implementation).
 pub fn embed(text: &str) -> anyhow::Result<Vec<f32>> {

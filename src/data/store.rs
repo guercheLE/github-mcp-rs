@@ -31,16 +31,33 @@ pub const VERSION_STORE_FILES: &[(&str, &str)] = &[
     ("ghes-2.22", "mcp_store_vghes-2.22.db"),
 ];
 
+// Each entry is zstd-compressed (level 19) — crates.io enforces a hard
+// 10MiB package-upload limit, and the raw uncompressed stores alone total
+// well over that once every API version carries real embeddings.
+// `resolve_store_path` decompresses these bytes back to a real on-disk
+// `.db` file before `rusqlite::Connection::open` ever sees them.
 const VERSION_STORE_BYTES: &[(&str, &[u8])] = &[
-    ("gh-2026-03-10", include_bytes!("../../mcp_store.db")),
+    ("gh-2026-03-10", include_bytes!("../../mcp_store.db.zst")),
     (
         "ghec-2026-03-10",
-        include_bytes!("../../mcp_store_vghec-2026-03-10.db"),
+        include_bytes!("../../mcp_store_vghec-2026-03-10.db.zst"),
     ),
-    ("ghes-3.21", include_bytes!("../../mcp_store_vghes-3.21.db")),
-    ("ghes-3.20", include_bytes!("../../mcp_store_vghes-3.20.db")),
-    ("ghes-3.19", include_bytes!("../../mcp_store_vghes-3.19.db")),
-    ("ghes-2.22", include_bytes!("../../mcp_store_vghes-2.22.db")),
+    (
+        "ghes-3.21",
+        include_bytes!("../../mcp_store_vghes-3.21.db.zst"),
+    ),
+    (
+        "ghes-3.20",
+        include_bytes!("../../mcp_store_vghes-3.20.db.zst"),
+    ),
+    (
+        "ghes-3.19",
+        include_bytes!("../../mcp_store_vghes-3.19.db.zst"),
+    ),
+    (
+        "ghes-2.22",
+        include_bytes!("../../mcp_store_vghes-2.22.db.zst"),
+    ),
 ];
 // mcpify:versions:end
 
@@ -82,7 +99,13 @@ pub fn resolve_store_path(api_version: &str) -> Result<PathBuf> {
     // `populate_embeddings` re-run or an `add-version` update) would
     // otherwise linger forever, silently serving outdated data. The
     // write is cheap — this runs once per process start, not per query.
-    std::fs::write(&path, bytes).with_context(|| {
+    // `bytes` is the zstd-compressed `.db.zst` payload (see
+    // `VERSION_STORE_BYTES`), not a valid SQLite file itself — it must be
+    // decompressed before `rusqlite::Connection::open` can read it.
+    let decompressed = zstd::stream::decode_all(bytes).with_context(|| {
+        format!("failed to decompress embedded store data for api_version '{api_version}'")
+    })?;
+    std::fs::write(&path, decompressed).with_context(|| {
         format!(
             "failed to extract embedded store data to '{}'",
             path.display()

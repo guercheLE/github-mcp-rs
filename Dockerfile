@@ -18,9 +18,17 @@ RUN apt-get update \
 COPY Cargo.toml Cargo.lock* ./
 COPY src ./src
 # Include every current and future API version store in the build context.
-COPY mcp_store*.db ./
+# Only the zstd-compressed form is tracked in git (see .gitignore) — the
+# raw `.db` files alone exceed crates.io's 10MiB package limit, and
+# `include_bytes!` in src/data/store.rs embeds the `.db.zst` bytes
+# directly, decompressing them at first use instead of at build time.
+COPY mcp_store*.db.zst ./
 
-# Populate every store before the final build so include_bytes! embeds vectors.
+# Populate every store before the final build so include_bytes! embeds
+# real vectors. populate-embeddings decompresses each `.db.zst` to a raw
+# `.db` itself, writes into it, then recompresses back to `.db.zst` and
+# removes the raw copy — so only `.db.zst` files remain afterward, which
+# is what the release build's include_bytes! call needs to see.
 RUN cargo build --locked --release --bin github-mcp-populate-embeddings
 RUN ./target/release/github-mcp-populate-embeddings --all
 RUN cargo build --locked --release
@@ -40,7 +48,7 @@ RUN apt-get update \
 
 COPY --from=builder /app/target/release/github-mcp ./github-mcp
 COPY --from=builder /app/target/release/github-mcp-healthcheck ./github-mcp-healthcheck
-COPY --from=builder /app/mcp_store*.db ./
+COPY --from=builder /app/mcp_store*.db.zst ./
 
 HEALTHCHECK --interval=30s --timeout=5s --retries=3 CMD ["./github-mcp-healthcheck"]
 

@@ -11,11 +11,83 @@
 // array string — `services::embedding_service`'s `search`-side query code
 // (Story R6) must encode/decode with this exact same byte layout.
 
+use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf};
 
 use anyhow::Context;
 use github_mcp::data::store::{VERSION_STORE_FILES, open_store_read_write};
 use github_mcp::services::embedding_service::embed;
+
+/// Compression level for the `.db.zst` sibling this binary leaves behind —
+/// matches the level `store.rs`'s embedded `VERSION_STORE_BYTES` were
+/// produced with, so re-running this binary never silently regresses the
+/// published package size.
+const ZSTD_LEVEL: i32 = 19;
+
+/// The `semantic_endpoints` vec0 embedding column's dimension — must match
+/// `services::embedding_service::embed`'s output width for the model
+/// currently in use (`all-MiniLM-L6-v2`, 384 dims). Every store's
+/// `semantic_endpoints` table is dropped and recreated with this dimension
+/// before repopulating, since sqlite-vec's vec0 tables are fixed-width and
+/// reject inserting a vector of a different length than the column was
+/// declared with.
+const EMBEDDING_DIM: usize = 384;
+
+/// Returns `path`'s zstd sibling, e.g. `mcp_store.db` -> `mcp_store.db.zst`.
+fn zst_sibling(path: &Path) -> PathBuf {
+    let mut name = path.as_os_str().to_owned();
+    name.push(".zst");
+    PathBuf::from(name)
+}
+
+/// Ensures a real, uncompressed `.db` file exists at `path` for SQLite to
+/// open read-write: if only the `.db.zst` sibling exists (the normal state
+/// once a store has been compressed and committed), decompresses it into
+/// place first. If both somehow exist, the raw `.db` is left untouched and
+/// treated as the working copy — `.zst` is regenerated from it below.
+fn ensure_raw_db(path: &Path) -> anyhow::Result<()> {
+    if path.exists() {
+        return Ok(());
+    }
+    let zst_path = zst_sibling(path);
+    let compressed = std::fs::read(&zst_path).with_context(|| {
+        format!(
+            "neither '{}' nor '{}' exists",
+            path.display(),
+            zst_path.display()
+        )
+    })?;
+    let decompressed = zstd::stream::decode_all(compressed.as_slice())
+        .with_context(|| format!("failed to decompress '{}'", zst_path.display()))?;
+    std::fs::write(path, decompressed)
+        .with_context(|| format!("failed to write decompressed '{}'", path.display()))?;
+    Ok(())
+}
+
+/// Re-compresses the raw `.db` at `path` into its `.db.zst` sibling, then
+/// removes the raw file — the working copy this binary operates on must
+/// never linger on disk afterward (it would otherwise risk getting
+/// accidentally committed, and the raw file is exactly what pushes the
+/// published crate package over crates.io's 10MiB limit).
+fn recompress_and_remove_raw(path: &Path) -> anyhow::Result<()> {
+    let raw =
+        std::fs::read(path).with_context(|| format!("failed to read '{}'", path.display()))?;
+    let compressed = zstd::stream::encode_all(raw.as_slice(), ZSTD_LEVEL)
+        .with_context(|| format!("failed to zstd-compress '{}'", path.display()))?;
+    let zst_path = zst_sibling(path);
+    let mut file = File::create(&zst_path)
+        .with_context(|| format!("failed to create '{}'", zst_path.display()))?;
+    file.write_all(&compressed)
+        .with_context(|| format!("failed to write '{}'", zst_path.display()))?;
+    std::fs::remove_file(path).with_context(|| {
+        format!(
+            "failed to remove raw '{}' after recompressing",
+            path.display()
+        )
+    })?;
+    Ok(())
+}
 
 struct EndpointRow {
     operation_id: String,
@@ -43,6 +115,36 @@ fn vector_to_le_bytes(vector: &[f32]) -> Vec<u8> {
 /// belt-and-suspenders row-count verification after the fact).
 fn populate_one(path: &Path) -> anyhow::Result<usize> {
     let conn = open_store_read_write(path)?;
+
+    // The `semantic_endpoints` vec0 table's `embedding` column is a
+    // fixed-width `FLOAT[N]`. Older stores were built against
+    // `all-mpnet-base-v2`'s 768-dim vectors; a full rebuild against the
+    // current model (`all-MiniLM-L6-v2`, `EMBEDDING_DIM`-dim) requires
+    // dropping and recreating the table at the new width rather than just
+    // deleting rows, since vec0 rejects inserting a vector whose length
+    // doesn't match the column's declared dimension.
+    conn.execute("DROP TABLE IF EXISTS semantic_endpoints", [])
+        .with_context(|| {
+            format!(
+                "failed to drop 'semantic_endpoints' in '{}'",
+                path.display()
+            )
+        })?;
+    conn.execute(
+        &format!(
+            "CREATE VIRTUAL TABLE semantic_endpoints USING vec0(
+                operation_id TEXT PRIMARY KEY,
+                embedding FLOAT[{EMBEDDING_DIM}]
+            )"
+        ),
+        [],
+    )
+    .with_context(|| {
+        format!(
+            "failed to recreate 'semantic_endpoints' in '{}'",
+            path.display()
+        )
+    })?;
 
     let mut select =
         conn.prepare("SELECT operation_id, path, method, summary, description FROM endpoints")?;
@@ -95,6 +197,16 @@ fn populate_one(path: &Path) -> anyhow::Result<usize> {
     drop(delete);
     drop(insert);
     check_completeness(&conn, path)?;
+
+    // Dropping and recreating `semantic_endpoints` above (to change its
+    // embedding dimension) frees its old pages, but SQLite doesn't shrink
+    // the on-disk file or reuse those pages for anything smaller without
+    // an explicit VACUUM — without this, the raw `.db` (and therefore its
+    // recompressed `.db.zst`) would stay exactly as large as when it held
+    // the wider 768-dim vectors, defeating the whole point of switching to
+    // a narrower embedding model.
+    conn.execute("VACUUM", [])
+        .with_context(|| format!("failed to VACUUM '{}'", path.display()))?;
 
     Ok(count)
 }
@@ -156,7 +268,17 @@ fn targets() -> Vec<PathBuf> {
 
 fn main() -> anyhow::Result<()> {
     for path in targets() {
+        // SQLite needs a real uncompressed file to write into — if only
+        // the `.db.zst` sibling is present (the normal committed state),
+        // decompress it into place first.
+        ensure_raw_db(&path)?;
+        // On failure, the `?` below propagates immediately and leaves the
+        // raw `.db` on disk (not recompressed) so it's available for
+        // inspection — only a successful, verified run gets folded back
+        // into the `.db.zst` this binary must always end by leaving
+        // behind.
         let count = populate_one(&path)?;
+        recompress_and_remove_raw(&path)?;
         println!(
             "populated embeddings for {count} operation(s) in '{}'",
             path.display()
