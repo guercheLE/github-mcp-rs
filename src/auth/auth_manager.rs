@@ -110,12 +110,12 @@ impl AuthManager {
             return self.normalize_credentials(cached).await;
         }
 
-        if let Some(from_env) = credentials_from_env(self.auth_method) {
-            if self.strategy.validate_credentials(&from_env) {
-                let normalized = self.normalize_credentials(&from_env).await?;
-                self.cached_credentials = Some(normalized.clone());
-                return Ok(normalized);
-            }
+        if let Some(from_env) = credentials_from_env(self.auth_method)
+            && self.strategy.validate_credentials(&from_env)
+        {
+            let normalized = self.normalize_credentials(&from_env).await?;
+            self.cached_credentials = Some(normalized.clone());
+            return Ok(normalized);
         }
 
         if let Some(stored) = load_credential(CREDENTIAL_ACCOUNT)? {

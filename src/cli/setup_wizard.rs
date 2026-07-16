@@ -189,8 +189,11 @@ async fn prompt_persistence(
                 "Global (all runs for this user — ~/.github-mcp/config.yml)",
             ];
             let tier_selection = tokio::task::spawn_blocking(move || {
-                inquire::Select::new("Save this config for just this project, or globally?", tier_choices)
-                    .prompt()
+                inquire::Select::new(
+                    "Save this config for just this project, or globally?",
+                    tier_choices,
+                )
+                .prompt()
             })
             .await??;
 
@@ -326,10 +329,7 @@ pub async fn run_setup_wizard() -> anyhow::Result<()> {
         "api_version".to_string(),
         env["GITHUB_MCP_API_VERSION"].clone(),
     );
-    config_fields.insert(
-        "transport".to_string(),
-        env["GITHUB_MCP_TRANSPORT"].clone(),
-    );
+    config_fields.insert("transport".to_string(), env["GITHUB_MCP_TRANSPORT"].clone());
 
     prompt_persistence(&env, &config_fields).await?;
     print_mcp_client_config(transport, auth_method, &env);

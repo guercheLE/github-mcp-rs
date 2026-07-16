@@ -108,9 +108,10 @@ fn populate_one(path: &Path) -> anyhow::Result<usize> {
 fn check_completeness(conn: &rusqlite::Connection, path: &Path) -> anyhow::Result<()> {
     let endpoints_count: usize =
         conn.query_row("SELECT COUNT(*) FROM endpoints", [], |row| row.get(0))?;
-    let semantic_count: usize = conn.query_row("SELECT COUNT(*) FROM semantic_endpoints", [], |row| {
-        row.get(0)
-    })?;
+    let semantic_count: usize =
+        conn.query_row("SELECT COUNT(*) FROM semantic_endpoints", [], |row| {
+            row.get(0)
+        })?;
 
     if endpoints_count != semantic_count {
         let mut stmt = conn.prepare(
