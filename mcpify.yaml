@@ -33,8 +33,6 @@ versions:
     source: https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.20/ghes-3.20.yaml
   - version: ghes-3.19
     source: https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.19/ghes-3.19.yaml
-  - version: ghes-2.22
-    source: https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-2.22/ghes-2.22.yaml
 version_policy:
   mode: all
 package_size_limit_mb: 100

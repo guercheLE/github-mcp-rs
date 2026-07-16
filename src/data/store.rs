@@ -28,7 +28,6 @@ pub const VERSION_STORE_FILES: &[(&str, &str)] = &[
     ("ghes-3.21", "mcp_store_vghes-3.21.db"),
     ("ghes-3.20", "mcp_store_vghes-3.20.db"),
     ("ghes-3.19", "mcp_store_vghes-3.19.db"),
-    ("ghes-2.22", "mcp_store_vghes-2.22.db"),
 ];
 
 // Each entry is zstd-compressed (level 19) — crates.io enforces a hard
@@ -53,10 +52,6 @@ const VERSION_STORE_BYTES: &[(&str, &[u8])] = &[
     (
         "ghes-3.19",
         include_bytes!("../../mcp_store_vghes-3.19.db.zst"),
-    ),
-    (
-        "ghes-2.22",
-        include_bytes!("../../mcp_store_vghes-2.22.db.zst"),
     ),
 ];
 // mcpify:versions:end

@@ -33,10 +33,6 @@ const KNOWN_VERSIONS: &[VersionRow] = &[
         label: "ghes-3.19",
         is_default: false,
     },
-    VersionRow {
-        label: "ghes-2.22",
-        is_default: false,
-    },
 ];
 // mcpify:versions:end
 

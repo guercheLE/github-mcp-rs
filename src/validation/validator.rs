@@ -45,7 +45,6 @@ fn schemas_zst_for(api_version: &str) -> Option<&'static [u8]> {
         "ghes-3.21" => Some(include_bytes!("generated_schemas_vghes-3.21.json.zst")),
         "ghes-3.20" => Some(include_bytes!("generated_schemas_vghes-3.20.json.zst")),
         "ghes-3.19" => Some(include_bytes!("generated_schemas_vghes-3.19.json.zst")),
-        "ghes-2.22" => Some(include_bytes!("generated_schemas_vghes-2.22.json.zst")),
         _ => None,
     }
 }

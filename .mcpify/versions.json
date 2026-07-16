@@ -34,12 +34,6 @@
       "schemas_file": "src/validation/generated_schemas_vghes-3.19.json.zst",
       "source": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.19/ghes-3.19.yaml",
       "added_at": 1783477368
-    },
-    "ghes-2.22": {
-      "db_file": "mcp_store_vghes-2.22.db",
-      "schemas_file": "src/validation/generated_schemas_vghes-2.22.json.zst",
-      "source": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-2.22/ghes-2.22.yaml",
-      "added_at": 1783477406
     }
   }
 }

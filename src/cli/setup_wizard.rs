@@ -62,7 +62,6 @@ async fn prompt_api_version() -> anyhow::Result<String> {
         "ghes-3.21",
         "ghes-3.20",
         "ghes-3.19",
-        "ghes-2.22",
     ];
     let selection = tokio::task::spawn_blocking(move || {
         inquire::Select::new("API version to use:", choices).prompt()
@@ -75,7 +74,6 @@ async fn prompt_api_version() -> anyhow::Result<String> {
         "ghes-3.21" => "ghes-3.21".to_string(),
         "ghes-3.20" => "ghes-3.20".to_string(),
         "ghes-3.19" => "ghes-3.19".to_string(),
-        "ghes-2.22" => "ghes-2.22".to_string(),
         other => other.to_string(),
     })
 }
