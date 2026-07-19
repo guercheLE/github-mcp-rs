@@ -15,25 +15,25 @@
       "db_file": "mcp_store_vghec-2026-03-10.db",
       "schemas_file": "src/validation/generated_schemas_vghec-2026-03-10.json.zst",
       "source": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghec/ghec.2026-03-10.yaml",
-      "added_at": 1783477361
+      "added_at": 1784425102
     },
     "ghes-3.21": {
       "db_file": "mcp_store_vghes-3.21.db",
       "schemas_file": "src/validation/generated_schemas_vghes-3.21.json.zst",
       "source": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.21/ghes-3.21.yaml",
-      "added_at": 1783477363
+      "added_at": 1784425114
     },
     "ghes-3.20": {
       "db_file": "mcp_store_vghes-3.20.db",
       "schemas_file": "src/validation/generated_schemas_vghes-3.20.json.zst",
       "source": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.20/ghes-3.20.yaml",
-      "added_at": 1783477365
+      "added_at": 1784425118
     },
     "ghes-3.19": {
       "db_file": "mcp_store_vghes-3.19.db",
       "schemas_file": "src/validation/generated_schemas_vghes-3.19.json.zst",
       "source": "https://raw.githubusercontent.com/github/rest-api-description/main/descriptions/ghes-3.19/ghes-3.19.yaml",
-      "added_at": 1783477368
+      "added_at": 1784425122
     }
   }
 }

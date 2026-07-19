@@ -31,7 +31,9 @@ const ZSTD_LEVEL: i32 = 19;
 /// `semantic_endpoints` table is dropped and recreated with this dimension
 /// before repopulating, since sqlite-vec's vec0 tables are fixed-width and
 /// reject inserting a vector of a different length than the column was
-/// declared with.
+/// declared with — mcpify's own generator always creates it at `FLOAT[768]`
+/// (matching `all-mpnet-base-v2`, the default for every target), so this
+/// must run on every generation/regeneration, not just the first one.
 const EMBEDDING_DIM: usize = 384;
 
 /// Returns `path`'s zstd sibling, e.g. `mcp_store.db` -> `mcp_store.db.zst`.
@@ -105,20 +107,16 @@ fn vector_to_le_bytes(vector: &[f32]) -> Vec<u8> {
 }
 
 /// Populates one store file's `semantic_endpoints` table in place,
-/// returning how many operations were (re)indexed.
-///
-/// A failure computing/inserting any single row's embedding (`embed(...)?`,
-/// `insert.execute(...)?`) propagates immediately via `?` — this
-/// deliberately does not catch-and-skip per-row errors, since a silently
-/// skipped row is exactly the "populated but missing embeddings" bug this
-/// binary exists to eliminate (see `check_completeness` below for the
-/// belt-and-suspenders row-count verification after the fact).
+/// returning how many operations were (re)indexed. Any single row's
+/// embedding computation/insert failing propagates as a hard error via `?`
+/// (never silently skipped) — a partially-embedded store is worse than a
+/// script that stops and reports exactly which operation broke.
 fn populate_one(path: &Path) -> anyhow::Result<usize> {
     let conn = open_store_read_write(path)?;
 
     // The `semantic_endpoints` vec0 table's `embedding` column is a
-    // fixed-width `FLOAT[N]`. Older stores were built against
-    // `all-mpnet-base-v2`'s 768-dim vectors; a full rebuild against the
+    // fixed-width `FLOAT[N]`. mcpify's generator always creates it at
+    // 768-dim (matching `all-mpnet-base-v2`); a full rebuild against the
     // current model (`all-MiniLM-L6-v2`, `EMBEDDING_DIM`-dim) requires
     // dropping and recreating the table at the new width rather than just
     // deleting rows, since vec0 rejects inserting a vector whose length
@@ -185,18 +183,18 @@ fn populate_one(path: &Path) -> anyhow::Result<usize> {
         .flatten()
         .collect::<Vec<_>>()
         .join(" ");
-        let vector = embed(&text)
-            .with_context(|| format!("failed to compute embedding for '{operation_id}'"))?;
-        delete.execute(rusqlite::params![operation_id])?;
-        insert
-            .execute(rusqlite::params![operation_id, vector_to_le_bytes(&vector)])
-            .with_context(|| format!("failed to insert embedding for '{operation_id}'"))?;
+        let vector = embed(&text).map_err(|err| {
+            anyhow::anyhow!(
+                "failed to compute embedding for '{operation_id}' in '{}': {err}",
+                path.display()
+            )
+        })?;
+        delete.execute(rusqlite::params![row.operation_id])?;
+        insert.execute(rusqlite::params![
+            row.operation_id,
+            vector_to_le_bytes(&vector)
+        ])?;
     }
-
-    drop(select);
-    drop(delete);
-    drop(insert);
-    check_completeness(&conn, path)?;
 
     // Dropping and recreating `semantic_endpoints` above (to change its
     // embedding dimension) frees its old pages, but SQLite doesn't shrink
@@ -211,52 +209,33 @@ fn populate_one(path: &Path) -> anyhow::Result<usize> {
     Ok(count)
 }
 
-/// Fix 8b: a store can end up with `endpoints` rows but no matching
-/// `semantic_endpoints` rows if embedding generation/insertion is silently
-/// skipped or partially fails for some rows without raising — this must
-/// never pass silently. Compares row counts after populating and fails
-/// loudly (returning an error, which `main` turns into a non-zero exit)
-/// identifying the store and exactly which operation IDs are missing.
-fn check_completeness(conn: &rusqlite::Connection, path: &Path) -> anyhow::Result<()> {
-    let endpoints_count: usize =
-        conn.query_row("SELECT COUNT(*) FROM endpoints", [], |row| row.get(0))?;
-    let semantic_count: usize =
-        conn.query_row("SELECT COUNT(*) FROM semantic_endpoints", [], |row| {
-            row.get(0)
-        })?;
-
-    if endpoints_count != semantic_count {
-        let mut stmt = conn.prepare(
-            "SELECT operation_id FROM endpoints
-             WHERE operation_id NOT IN (SELECT operation_id FROM semantic_endpoints)",
-        )?;
-        let missing: Vec<String> = stmt
-            .query_map([], |row| row.get(0))?
-            .collect::<Result<_, _>>()?;
-        anyhow::bail!(
-            "'{}' is incomplete: {endpoints_count} endpoint(s) but only {semantic_count} \
-             semantic_endpoints row(s); missing operation_id(s): {}",
-            path.display(),
-            missing.join(", ")
-        );
-    }
-
-    Ok(())
+/// Verifies `semantic_endpoints` row count equals `endpoints` row count for
+/// the store at `path` — a store can end up with `endpoints` rows but no
+/// matching `semantic_endpoints` rows if embedding generation/insertion was
+/// silently skipped or partially failed for some rows, and that must not be
+/// allowed to pass as "populated". Returns the operation IDs present in
+/// `endpoints` but missing from `semantic_endpoints` when counts diverge.
+fn missing_operation_ids(path: &Path) -> anyhow::Result<Vec<String>> {
+    let conn = open_store_read_write(path)?;
+    let mut select = conn.prepare(
+        "SELECT e.operation_id FROM endpoints e \
+         LEFT JOIN semantic_endpoints s ON s.operation_id = e.operation_id \
+         WHERE s.operation_id IS NULL",
+    )?;
+    let missing: Vec<String> = select
+        .query_map([], |row| row.get(0))?
+        .collect::<Result<_, _>>()?;
+    Ok(missing)
 }
 
-/// Which store file(s) to populate: bare invocation targets **every**
-/// version this project's ledger knows about (`VERSION_STORE_FILES`) — the
-/// safe default, since a store left at 0 `semantic_endpoints` rows makes
-/// `search` silently return `[]` for that `api_version` with no error
-/// anywhere (the original bug: only the default-version file ever got
-/// populated by a bare invocation, leaving every other version's store at
-/// 0 `semantic_endpoints` rows). An explicit path argument still targets
-/// exactly that one file, for a fast single-store re-run. `--all` is kept
-/// as an accepted synonym for the (now-default) full-ledger behavior, so
-/// existing callers (this project's own `Dockerfile`) keep working
-/// unchanged.
-fn targets() -> Vec<PathBuf> {
-    let mut args = std::env::args().skip(1);
+/// Which store file(s) to populate: bare invocation (and `--all`) both walk
+/// every version this project's ledger knows about (`VERSION_STORE_FILES`)
+/// — defaulting to just the default version's store left every other
+/// version's `semantic_endpoints` table at 0 rows unless `--all` was passed
+/// explicitly, so the safe default is "populate everything". An explicit
+/// path argument still targets exactly that one file, for a targeted
+/// re-run.
+fn targets_from(mut args: impl Iterator<Item = String>) -> Vec<PathBuf> {
     match args.next().as_deref() {
         Some("--all") | None => VERSION_STORE_FILES
             .iter()
@@ -266,23 +245,66 @@ fn targets() -> Vec<PathBuf> {
     }
 }
 
+fn targets() -> Vec<PathBuf> {
+    targets_from(std::env::args().skip(1))
+}
+
 fn main() -> anyhow::Result<()> {
+    let mut had_mismatch = false;
     for path in targets() {
         // SQLite needs a real uncompressed file to write into — if only
         // the `.db.zst` sibling is present (the normal committed state),
         // decompress it into place first.
         ensure_raw_db(&path)?;
-        // On failure, the `?` below propagates immediately and leaves the
-        // raw `.db` on disk (not recompressed) so it's available for
-        // inspection — only a successful, verified run gets folded back
-        // into the `.db.zst` this binary must always end by leaving
-        // behind.
+
         let count = populate_one(&path)?;
-        recompress_and_remove_raw(&path)?;
         println!(
             "populated embeddings for {count} operation(s) in '{}'",
             path.display()
         );
+
+        let missing = missing_operation_ids(&path)?;
+        if !missing.is_empty() {
+            had_mismatch = true;
+            eprintln!(
+                "ERROR: '{}' has {} endpoint(s) missing from semantic_endpoints (row-count \
+                 parity check failed): {}",
+                path.display(),
+                missing.len(),
+                missing.join(", ")
+            );
+        }
+
+        // On failure above, `?` already propagated and left the raw `.db`
+        // on disk (not recompressed) so it's available for inspection —
+        // only a fully processed path gets folded back into the `.db.zst`
+        // this binary must always end by leaving behind.
+        recompress_and_remove_raw(&path)?;
+    }
+    if had_mismatch {
+        anyhow::bail!(
+            "embedding population incomplete: one or more stores have semantic_endpoints \
+             row counts below their endpoints row counts (see errors above)"
+        );
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn target_selection_covers_defaults_all_and_explicit_paths_without_mutating_stores() {
+        let expected = VERSION_STORE_FILES
+            .iter()
+            .map(|(_, file)| PathBuf::from(file))
+            .collect::<Vec<_>>();
+        assert_eq!(targets_from(std::iter::empty()), expected);
+        assert_eq!(targets_from(["--all".to_string()].into_iter()), expected);
+        assert_eq!(
+            targets_from(["copy.db".to_string()].into_iter()),
+            vec![PathBuf::from("copy.db")]
+        );
+    }
 }

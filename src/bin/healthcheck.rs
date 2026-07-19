@@ -4,12 +4,11 @@
 // mcp_store.db.zst is present and readable rather than depending on the
 // running server's transport — stdio mode has no HTTP endpoint to probe.
 // Checks the `.zst` file specifically (not `mcp_store.db`): the runtime
-// image only ever carries the zstd-compressed store now (see the
-// Dockerfile and src/data/store.rs's resolve_store_path) — the server
-// decompresses it into a temp dir at first use, not into this working
-// directory. Kept dependency-free (no `use github_mcp::...`) so this
-// binary stays fast to start and simple to reason about for a check that
-// runs every 30s.
+// image only ever carries the zstd-compressed store (see the Dockerfile
+// and src/data/store.rs's resolve_store_path) — the server decompresses
+// it into a temp dir at first use, not into this working directory. Kept
+// dependency-free (no `use github_mcp::...`) so this binary stays fast
+// to start and simple to reason about for a check that runs every 30s.
 
 use std::path::Path;
 
