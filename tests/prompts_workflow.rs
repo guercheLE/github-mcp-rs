@@ -58,6 +58,7 @@ async fn prompts_list_advertises_every_workflow_prompt_under_the_shared_prefix()
             "github_workflow_actions_ci",
             "github_workflow_apps_auth_billing",
             "github_workflow_codespaces_copilot",
+            "github_workflow_environments_deployments",
             "github_workflow_issues",
             "github_workflow_meta_diagnostics",
             "github_workflow_orgs_teams",
@@ -65,6 +66,7 @@ async fn prompts_list_advertises_every_workflow_prompt_under_the_shared_prefix()
             "github_workflow_projects",
             "github_workflow_pull_request",
             "github_workflow_repos",
+            "github_workflow_rulesets",
             "github_workflow_security_suite",
             "github_workflow_users_activity",
         ]
@@ -86,6 +88,34 @@ async fn prompts_list_advertises_every_workflow_prompt_under_the_shared_prefix()
     assert!(
         args.iter().all(|a| a.required == Some(false)),
         "every pull-request argument must be optional, got: {args:?}"
+    );
+
+    let rulesets = prompts
+        .iter()
+        .find(|p| p.name == "github_workflow_rulesets")
+        .unwrap();
+    let args = rulesets.arguments.as_ref().unwrap();
+    let arg_names: Vec<&str> = args.iter().map(|a| a.name.as_str()).collect();
+    for expected in ["owner_or_org", "repo", "ruleset_name", "target_ref_pattern"] {
+        assert!(arg_names.contains(&expected), "missing arg: {expected}");
+    }
+    assert!(
+        args.iter().all(|a| a.required == Some(false)),
+        "every ruleset argument must be optional, got: {args:?}"
+    );
+
+    let environments = prompts
+        .iter()
+        .find(|p| p.name == "github_workflow_environments_deployments")
+        .unwrap();
+    let args = environments.arguments.as_ref().unwrap();
+    let arg_names: Vec<&str> = args.iter().map(|a| a.name.as_str()).collect();
+    for expected in ["owner", "repo", "environment_name"] {
+        assert!(arg_names.contains(&expected), "missing arg: {expected}");
+    }
+    assert!(
+        args.iter().all(|a| a.required == Some(false)),
+        "every environments/deployments argument must be optional, got: {args:?}"
     );
 
     drop(client);
@@ -141,6 +171,91 @@ async fn pull_request_prompt_with_no_arguments_lists_every_field_as_missing() {
     let text = text_of(&result);
     assert!(text.contains("(none — no arguments were supplied"));
     for expected in ["owner", "repo", "base_branch", "head_branch"] {
+        assert!(text.contains(expected));
+    }
+
+    drop(client);
+}
+
+#[tokio::test]
+async fn rulesets_prompt_echoes_supplied_arguments_and_lists_the_missing_ones() {
+    let client = connected_client().await;
+
+    let result = client
+        .get_prompt(
+            GetPromptRequestParams::new("github_workflow_rulesets").with_arguments(
+                serde_json::json!({ "owner_or_org": "octocat", "repo": "hello-world" })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+            ),
+        )
+        .await
+        .unwrap();
+    let text = text_of(&result);
+    assert!(text.contains("`owner_or_org` = \"octocat\""));
+    assert!(text.contains("`repo` = \"hello-world\""));
+    assert!(text.contains("ruleset_name"));
+    assert!(text.contains("target_ref_pattern"));
+    assert!(text.contains("Sub-workflow: Rulesets"));
+
+    drop(client);
+}
+
+#[tokio::test]
+async fn rulesets_prompt_with_no_arguments_lists_every_field_as_missing() {
+    let client = connected_client().await;
+
+    let result = client
+        .get_prompt(GetPromptRequestParams::new("github_workflow_rulesets"))
+        .await
+        .unwrap();
+    let text = text_of(&result);
+    assert!(text.contains("(none — no arguments were supplied"));
+    for expected in ["owner_or_org", "repo", "ruleset_name", "target_ref_pattern"] {
+        assert!(text.contains(expected));
+    }
+
+    drop(client);
+}
+
+#[tokio::test]
+async fn environments_deployments_prompt_echoes_supplied_arguments_and_lists_the_missing_ones() {
+    let client = connected_client().await;
+
+    let result = client
+        .get_prompt(
+            GetPromptRequestParams::new("github_workflow_environments_deployments").with_arguments(
+                serde_json::json!({ "owner": "octocat", "repo": "hello-world" })
+                    .as_object()
+                    .unwrap()
+                    .clone(),
+            ),
+        )
+        .await
+        .unwrap();
+    let text = text_of(&result);
+    assert!(text.contains("`owner` = \"octocat\""));
+    assert!(text.contains("`repo` = \"hello-world\""));
+    assert!(text.contains("environment_name"));
+    assert!(text.contains("Sub-workflow: Deployment environments"));
+
+    drop(client);
+}
+
+#[tokio::test]
+async fn environments_deployments_prompt_with_no_arguments_lists_every_field_as_missing() {
+    let client = connected_client().await;
+
+    let result = client
+        .get_prompt(GetPromptRequestParams::new(
+            "github_workflow_environments_deployments",
+        ))
+        .await
+        .unwrap();
+    let text = text_of(&result);
+    assert!(text.contains("(none — no arguments were supplied"));
+    for expected in ["owner", "repo", "environment_name"] {
         assert!(text.contains(expected));
     }
 

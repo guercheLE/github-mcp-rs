@@ -15,7 +15,35 @@ Real gotcha: branch protection rules reference required status-check
 system has actually reported a status for at least one commit on the
 branch, so search for how to list the check-runs or commit statuses
 already reported on the branch before configuring protection around a
-context that hasn't run yet.
+context that hasn't run yet. For newer projects, also consider
+`github_workflow_rulesets` — it supersedes classic branch protection and
+supports a dry-run mode before enforcement.
+
+Real gotcha — atomic multi-file commits: the single-file
+`create-or-update-file-contents` operation can't touch more than one file
+per commit. For a commit that must span multiple files atomically, search
+for the git data API instead and use it in order: create a blob per file,
+create a tree referencing those blobs (with `base_tree` set to the
+current tree), create a commit pointing at that tree, then update the
+branch ref to point at the new commit. Skipping straight to "update the
+ref" before the commit/tree/blobs exist will fail or silently reference
+the wrong content.
+
+Real gotcha — publishing a release: search for how to create a release as
+a draft first, then upload each release asset (a binary upload, not a
+plain JSON call) before updating the release to flip `draft` to false —
+uploading assets after the release is already public means there's a
+window where the release exists without its assets. `generate-release-notes`
+can produce a draft changelog beforehand if the user wants one. Some
+repositories also enable immutable releases, which changes what can still
+be edited once a release is published — check for that setting if an
+edit after publishing unexpectedly fails.
+
+If the user reports a webhook isn't firing, search for how to list a
+webhook's recent deliveries (not just whether the webhook itself exists)
+before assuming misconfiguration — a delivery that shows a non-2xx
+response points at the receiving end, not GitHub's side; redelivering a
+past delivery is also useful for reproducing the issue.
 
 Never hardcode an operationId or assume a specific response field name —
 both can differ across the GitHub deployments (`gh`, `ghec`, `ghes`) this
@@ -26,4 +54,7 @@ resolves to and read its current schema.
 
 Opening a pull request against a branch here is covered in more depth by
 `github_workflow_pull_request`; workflow-driven status checks are covered
-by `github_workflow_actions_ci`.
+by `github_workflow_actions_ci`; rulesets (the modern alternative to
+branch protection) are covered by `github_workflow_rulesets`; deployment
+environments, deployments, and Pages are covered by
+`github_workflow_environments_deployments`.

@@ -25,6 +25,28 @@ pub struct PullRequestWorkflowArgs {
     pub head_branch: Option<String>,
 }
 
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct RulesetsWorkflowArgs {
+    /// Account or organization the ruleset belongs to
+    pub owner_or_org: Option<String>,
+    /// Repository the ruleset targets, if it's repo-scoped (omit for an org-wide ruleset)
+    pub repo: Option<String>,
+    /// Desired name for the ruleset, if the user already has one in mind
+    pub ruleset_name: Option<String>,
+    /// Branch/tag name or pattern the ruleset should target
+    pub target_ref_pattern: Option<String>,
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct EnvironmentsDeploymentsWorkflowArgs {
+    /// Owner (user or organization) of the repository
+    pub owner: Option<String>,
+    /// Name of the repository
+    pub repo: Option<String>,
+    /// Name of the deployment environment (e.g. "production")
+    pub environment_name: Option<String>,
+}
+
 /// Renders a short "Context already provided" header listing which of a
 /// prompt's optional arguments the caller already supplied vs. still need to
 /// be asked for. Prepended to each `content/*.md` body so the static

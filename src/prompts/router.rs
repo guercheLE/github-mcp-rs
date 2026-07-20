@@ -7,7 +7,10 @@ use rmcp::model::{PromptMessage, Role};
 use rmcp::{prompt, prompt_router};
 
 use crate::core::mcp_server::McpifyServer;
-use crate::prompts::{MasterWorkflowArgs, PullRequestWorkflowArgs, render_context_header};
+use crate::prompts::{
+    EnvironmentsDeploymentsWorkflowArgs, MasterWorkflowArgs, PullRequestWorkflowArgs,
+    RulesetsWorkflowArgs, render_context_header,
+};
 
 #[prompt_router(vis = "pub(crate)")]
 impl McpifyServer {
@@ -49,6 +52,52 @@ impl McpifyServer {
         vec![PromptMessage::new_text(
             Role::User,
             format!("{header}\n\n{}", include_str!("content/pull_request.md")),
+        )]
+    }
+
+    #[prompt(
+        name = "github_workflow_rulesets",
+        description = "Guided setup of repository/org/enterprise rulesets -- the mechanism \
+                        that supersedes classic branch protection -- including the \
+                        evaluate-mode dry run before flipping enforcement on."
+    )]
+    async fn github_workflow_rulesets_prompt(
+        &self,
+        Parameters(args): Parameters<RulesetsWorkflowArgs>,
+    ) -> Vec<PromptMessage> {
+        let header = render_context_header(&[
+            ("owner_or_org", args.owner_or_org.as_deref()),
+            ("repo", args.repo.as_deref()),
+            ("ruleset_name", args.ruleset_name.as_deref()),
+            ("target_ref_pattern", args.target_ref_pattern.as_deref()),
+        ]);
+        vec![PromptMessage::new_text(
+            Role::User,
+            format!("{header}\n\n{}", include_str!("content/rulesets.md")),
+        )]
+    }
+
+    #[prompt(
+        name = "github_workflow_environments_deployments",
+        description = "Guided setup of deployment environments (protected or simple) and \
+                        deployments, tracking the deployment status lifecycle and approval \
+                        gates, plus a shorter GitHub Pages setup flow."
+    )]
+    async fn github_workflow_environments_deployments_prompt(
+        &self,
+        Parameters(args): Parameters<EnvironmentsDeploymentsWorkflowArgs>,
+    ) -> Vec<PromptMessage> {
+        let header = render_context_header(&[
+            ("owner", args.owner.as_deref()),
+            ("repo", args.repo.as_deref()),
+            ("environment_name", args.environment_name.as_deref()),
+        ]);
+        vec![PromptMessage::new_text(
+            Role::User,
+            format!(
+                "{header}\n\n{}",
+                include_str!("content/environments_deployments.md")
+            ),
         )]
     }
 

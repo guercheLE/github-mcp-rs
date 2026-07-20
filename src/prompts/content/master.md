@@ -26,6 +26,12 @@ is available, run the sub-workflow's steps directly here instead.
   request flow: branch, commit, push, open the PR, reviewers, checks,
   merge. Use this rather than `repos`/`issues` individually when the goal
   is specifically opening or landing a PR.
+- **`github_workflow_rulesets`** — guided setup of repository/org/
+  enterprise rulesets (the modern alternative to classic branch
+  protection), including the evaluate-mode dry run before enforcing.
+- **`github_workflow_environments_deployments`** — deployment
+  environments (protected or simple), deployments and their status
+  lifecycle, approval gates, and GitHub Pages.
 - **`github_workflow_issues`** — issue lifecycle, labels, milestones,
   assignees, comments, reactions.
 - **`github_workflow_actions_ci`** — GitHub Actions workflows, runs,
