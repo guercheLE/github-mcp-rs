@@ -54,31 +54,31 @@ async fn prompts_list_advertises_every_workflow_prompt_under_the_shared_prefix()
     assert_eq!(
         names,
         [
-            "github_workflow",
-            "github_workflow_actions_ci",
-            "github_workflow_apps_auth_billing",
-            "github_workflow_codespaces_copilot",
-            "github_workflow_environments_deployments",
-            "github_workflow_issues",
-            "github_workflow_meta_diagnostics",
-            "github_workflow_orgs_teams",
-            "github_workflow_packages_migrations_gists",
-            "github_workflow_projects",
-            "github_workflow_pull_request",
-            "github_workflow_repos",
-            "github_workflow_rulesets",
-            "github_workflow_security_suite",
-            "github_workflow_users_activity",
+            "github-workflow",
+            "github-workflow-actions-ci",
+            "github-workflow-apps-auth-billing",
+            "github-workflow-codespaces-copilot",
+            "github-workflow-environments-deployments",
+            "github-workflow-issues",
+            "github-workflow-meta-diagnostics",
+            "github-workflow-orgs-teams",
+            "github-workflow-packages-migrations-gists",
+            "github-workflow-projects",
+            "github-workflow-pull-request",
+            "github-workflow-repos",
+            "github-workflow-rulesets",
+            "github-workflow-security-suite",
+            "github-workflow-users-activity",
         ]
     );
     assert!(
-        names.iter().all(|n| n.starts_with("github_workflow")),
-        "every prompt name must share the github_workflow* prefix, got: {names:?}"
+        names.iter().all(|n| n.starts_with("github-workflow")),
+        "every prompt name must share the github-workflow* prefix, got: {names:?}"
     );
 
     let pull_request = prompts
         .iter()
-        .find(|p| p.name == "github_workflow_pull_request")
+        .find(|p| p.name == "github-workflow-pull-request")
         .unwrap();
     let args = pull_request.arguments.as_ref().unwrap();
     let arg_names: Vec<&str> = args.iter().map(|a| a.name.as_str()).collect();
@@ -92,7 +92,7 @@ async fn prompts_list_advertises_every_workflow_prompt_under_the_shared_prefix()
 
     let rulesets = prompts
         .iter()
-        .find(|p| p.name == "github_workflow_rulesets")
+        .find(|p| p.name == "github-workflow-rulesets")
         .unwrap();
     let args = rulesets.arguments.as_ref().unwrap();
     let arg_names: Vec<&str> = args.iter().map(|a| a.name.as_str()).collect();
@@ -106,7 +106,7 @@ async fn prompts_list_advertises_every_workflow_prompt_under_the_shared_prefix()
 
     let environments = prompts
         .iter()
-        .find(|p| p.name == "github_workflow_environments_deployments")
+        .find(|p| p.name == "github-workflow-environments-deployments")
         .unwrap();
     let args = environments.arguments.as_ref().unwrap();
     let arg_names: Vec<&str> = args.iter().map(|a| a.name.as_str()).collect();
@@ -126,12 +126,12 @@ async fn master_prompt_with_no_arguments_links_to_the_pull_request_sub_workflow(
     let client = connected_client().await;
 
     let result = client
-        .get_prompt(GetPromptRequestParams::new("github_workflow"))
+        .get_prompt(GetPromptRequestParams::new("github-workflow"))
         .await
         .unwrap();
     assert_eq!(result.messages.len(), 1);
     let text = text_of(&result);
-    assert!(text.contains("github_workflow_pull_request"));
+    assert!(text.contains("github-workflow-pull-request"));
 
     drop(client);
 }
@@ -142,7 +142,7 @@ async fn pull_request_prompt_echoes_supplied_arguments_and_lists_the_missing_one
 
     let result = client
         .get_prompt(
-            GetPromptRequestParams::new("github_workflow_pull_request").with_arguments(
+            GetPromptRequestParams::new("github-workflow-pull-request").with_arguments(
                 serde_json::json!({ "owner": "octocat", "repo": "hello-world" })
                     .as_object()
                     .unwrap()
@@ -165,7 +165,7 @@ async fn pull_request_prompt_with_no_arguments_lists_every_field_as_missing() {
     let client = connected_client().await;
 
     let result = client
-        .get_prompt(GetPromptRequestParams::new("github_workflow_pull_request"))
+        .get_prompt(GetPromptRequestParams::new("github-workflow-pull-request"))
         .await
         .unwrap();
     let text = text_of(&result);
@@ -183,7 +183,7 @@ async fn rulesets_prompt_echoes_supplied_arguments_and_lists_the_missing_ones() 
 
     let result = client
         .get_prompt(
-            GetPromptRequestParams::new("github_workflow_rulesets").with_arguments(
+            GetPromptRequestParams::new("github-workflow-rulesets").with_arguments(
                 serde_json::json!({ "owner_or_org": "octocat", "repo": "hello-world" })
                     .as_object()
                     .unwrap()
@@ -207,7 +207,7 @@ async fn rulesets_prompt_with_no_arguments_lists_every_field_as_missing() {
     let client = connected_client().await;
 
     let result = client
-        .get_prompt(GetPromptRequestParams::new("github_workflow_rulesets"))
+        .get_prompt(GetPromptRequestParams::new("github-workflow-rulesets"))
         .await
         .unwrap();
     let text = text_of(&result);
@@ -225,7 +225,7 @@ async fn environments_deployments_prompt_echoes_supplied_arguments_and_lists_the
 
     let result = client
         .get_prompt(
-            GetPromptRequestParams::new("github_workflow_environments_deployments").with_arguments(
+            GetPromptRequestParams::new("github-workflow-environments-deployments").with_arguments(
                 serde_json::json!({ "owner": "octocat", "repo": "hello-world" })
                     .as_object()
                     .unwrap()
@@ -249,7 +249,7 @@ async fn environments_deployments_prompt_with_no_arguments_lists_every_field_as_
 
     let result = client
         .get_prompt(GetPromptRequestParams::new(
-            "github_workflow_environments_deployments",
+            "github-workflow-environments-deployments",
         ))
         .await
         .unwrap();
@@ -267,17 +267,17 @@ async fn every_argument_less_sub_workflow_prompt_returns_its_own_guided_content(
     let client = connected_client().await;
 
     for name in [
-        "github_workflow_repos",
-        "github_workflow_issues",
-        "github_workflow_actions_ci",
-        "github_workflow_orgs_teams",
-        "github_workflow_security_suite",
-        "github_workflow_apps_auth_billing",
-        "github_workflow_packages_migrations_gists",
-        "github_workflow_codespaces_copilot",
-        "github_workflow_projects",
-        "github_workflow_users_activity",
-        "github_workflow_meta_diagnostics",
+        "github-workflow-repos",
+        "github-workflow-issues",
+        "github-workflow-actions-ci",
+        "github-workflow-orgs-teams",
+        "github-workflow-security-suite",
+        "github-workflow-apps-auth-billing",
+        "github-workflow-packages-migrations-gists",
+        "github-workflow-codespaces-copilot",
+        "github-workflow-projects",
+        "github-workflow-users-activity",
+        "github-workflow-meta-diagnostics",
     ] {
         let result = client
             .get_prompt(GetPromptRequestParams::new(name))

@@ -6,7 +6,7 @@ plus a shorter secondary flow for GitHub Pages, which shares the
 environment concept.
 
 This sub-workflow is self-contained and delegable: if you were routed here
-from `github_workflow`, or your environment supports running sub-tasks in
+from `github-workflow`, or your environment supports running sub-tasks in
 an isolated context, this prompt's own text plus the parameters above is
 everything you need — report back only a short summary when done, not the
 full step-by-step trace.
@@ -109,5 +109,5 @@ confirm the site is actually serving before telling the user it's ready.
 ## Composing with other workflows
 
 Workflow-triggered deployments and their approval gates overlap with
-`github_workflow_actions_ci`; confirming the branch used for branch-based
-Pages overlaps with `github_workflow_repos`.
+`github-workflow-actions-ci`; confirming the branch used for branch-based
+Pages overlaps with `github-workflow-repos`.

@@ -16,7 +16,7 @@ system has actually reported a status for at least one commit on the
 branch, so search for how to list the check-runs or commit statuses
 already reported on the branch before configuring protection around a
 context that hasn't run yet. For newer projects, also consider
-`github_workflow_rulesets` — it supersedes classic branch protection and
+`github-workflow-rulesets` — it supersedes classic branch protection and
 supports a dry-run mode before enforcement.
 
 Real gotcha — atomic multi-file commits: the single-file
@@ -53,8 +53,8 @@ resolves to and read its current schema.
 ## Composing with other workflows
 
 Opening a pull request against a branch here is covered in more depth by
-`github_workflow_pull_request`; workflow-driven status checks are covered
-by `github_workflow_actions_ci`; rulesets (the modern alternative to
-branch protection) are covered by `github_workflow_rulesets`; deployment
+`github-workflow-pull-request`; workflow-driven status checks are covered
+by `github-workflow-actions-ci`; rulesets (the modern alternative to
+branch protection) are covered by `github-workflow-rulesets`; deployment
 environments, deployments, and Pages are covered by
-`github_workflow_environments_deployments`.
+`github-workflow-environments-deployments`.

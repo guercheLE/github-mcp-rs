@@ -5,7 +5,7 @@ fork-vs-direct-branch decision GitHub's permission model forces, and not
 declaring the PR ready until checks and reviews actually confirm it.
 
 This sub-workflow is self-contained and delegable: if you were routed here
-from `github_workflow`, or your environment supports running sub-tasks in
+from `github-workflow`, or your environment supports running sub-tasks in
 an isolated context, this prompt's own text plus the parameters above is
 everything you need — report back only a short summary when done, not the
 full step-by-step trace.
@@ -105,7 +105,7 @@ whether to merge, rather than merging unprompted.
 
 ## Composing with other workflows
 
-Branch and commit mechanics overlap with `github_workflow_repos`;
-check-run status overlaps with `github_workflow_actions_ci`; comments and
-labels overlap with `github_workflow_issues`. Fetch those prompts for more
+Branch and commit mechanics overlap with `github-workflow-repos`;
+check-run status overlaps with `github-workflow-actions-ci`; comments and
+labels overlap with `github-workflow-issues`. Fetch those prompts for more
 detail on an individual operation rather than guessing.

@@ -22,5 +22,5 @@ resolves to and read its current schema.
 ## Composing with other workflows
 
 Pull requests share issues' comment/label/assignee endpoints — see
-`github_workflow_pull_request` for the PR-specific flow (branching,
+`github-workflow-pull-request` for the PR-specific flow (branching,
 opening, reviewers, checks).

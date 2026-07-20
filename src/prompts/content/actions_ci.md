@@ -33,4 +33,4 @@ resolves to and read its current schema.
 ## Composing with other workflows
 
 Check-run status feeding into a pull request's mergeability is covered by
-`github_workflow_pull_request`'s verification step.
+`github-workflow-pull-request`'s verification step.

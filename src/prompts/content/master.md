@@ -19,39 +19,39 @@ is available, run the sub-workflow's steps directly here instead.
 
 ## Menu
 
-- **`github_workflow_repos`** — repository lifecycle (create, fork,
+- **`github-workflow-repos`** — repository lifecycle (create, fork,
   transfer, archive, delete), branches, tags, commits/git data, releases,
   topics/settings, webhooks.
-- **`github_workflow_pull_request`** — guided fork-vs-direct-branch pull
+- **`github-workflow-pull-request`** — guided fork-vs-direct-branch pull
   request flow: branch, commit, push, open the PR, reviewers, checks,
   merge. Use this rather than `repos`/`issues` individually when the goal
   is specifically opening or landing a PR.
-- **`github_workflow_rulesets`** — guided setup of repository/org/
+- **`github-workflow-rulesets`** — guided setup of repository/org/
   enterprise rulesets (the modern alternative to classic branch
   protection), including the evaluate-mode dry run before enforcing.
-- **`github_workflow_environments_deployments`** — deployment
+- **`github-workflow-environments-deployments`** — deployment
   environments (protected or simple), deployments and their status
   lifecycle, approval gates, and GitHub Pages.
-- **`github_workflow_issues`** — issue lifecycle, labels, milestones,
+- **`github-workflow-issues`** — issue lifecycle, labels, milestones,
   assignees, comments, reactions.
-- **`github_workflow_actions_ci`** — GitHub Actions workflows, runs,
+- **`github-workflow-actions-ci`** — GitHub Actions workflows, runs,
   artifacts, secrets/variables, self-hosted runners, hosted compute,
   check-runs.
-- **`github_workflow_orgs_teams`** — organizations, teams, enterprise
+- **`github-workflow-orgs-teams`** — organizations, teams, enterprise
   teams/memberships, members, outside collaborators.
-- **`github_workflow_security_suite`** — code scanning, secret scanning,
+- **`github-workflow-security-suite`** — code scanning, secret scanning,
   code security configurations, Dependabot, security advisories,
   dependency graph, private registries.
-- **`github_workflow_apps_auth_billing`** — GitHub Apps/installations,
+- **`github-workflow-apps-auth-billing`** — GitHub Apps/installations,
   OAuth apps, OIDC, billing, credentials, API insights.
-- **`github_workflow_packages_migrations_gists`** — packages, import/export
+- **`github-workflow-packages-migrations-gists`** — packages, import/export
   migrations, gists.
-- **`github_workflow_codespaces_copilot`** — Codespaces, Copilot, Copilot
+- **`github-workflow-codespaces-copilot`** — Codespaces, Copilot, Copilot
   Spaces, agents/agent tasks, GitHub Classroom.
-- **`github_workflow_projects`** — Projects (v2), campaigns.
-- **`github_workflow_users_activity`** — user profile/keys/social graph,
+- **`github-workflow-projects`** — Projects (v2), campaigns.
+- **`github-workflow-users-activity`** — user profile/keys/social graph,
   activity feed, starring/watching, notifications.
-- **`github_workflow_meta_diagnostics`** — read-only utility signals: API
+- **`github-workflow-meta-diagnostics`** — read-only utility signals: API
   meta, rate limits, code search, emojis, gitignore templates, licenses,
   code-of-conduct templates, markdown rendering.
 

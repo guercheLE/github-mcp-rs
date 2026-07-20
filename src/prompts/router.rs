@@ -15,7 +15,7 @@ use crate::prompts::{
 #[prompt_router(vis = "pub(crate)")]
 impl McpifyServer {
     #[prompt(
-        name = "github_workflow",
+        name = "github-workflow",
         description = "Start here. Presents the available GitHub management workflows, \
                         routes to the right guided sub-workflow based on the user's goal, \
                         and -- where the environment supports it -- delegates that whole \
@@ -34,7 +34,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_pull_request",
+        name = "github-workflow-pull-request",
         description = "Guided, multi-step pull request flow: the fork-vs-direct-branch \
                         decision, branch/commit/push, opening the PR, reviewers, and \
                         verifying checks/reviews before declaring it ready to merge."
@@ -56,7 +56,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_rulesets",
+        name = "github-workflow-rulesets",
         description = "Guided setup of repository/org/enterprise rulesets -- the mechanism \
                         that supersedes classic branch protection -- including the \
                         evaluate-mode dry run before flipping enforcement on."
@@ -78,7 +78,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_environments_deployments",
+        name = "github-workflow-environments-deployments",
         description = "Guided setup of deployment environments (protected or simple) and \
                         deployments, tracking the deployment status lifecycle and approval \
                         gates, plus a shorter GitHub Pages setup flow."
@@ -102,7 +102,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_repos",
+        name = "github-workflow-repos",
         description = "Repository lifecycle (create, fork, transfer, archive, delete), \
                         branches and branch protection, tags, commits/git data, releases, \
                         topics/settings, webhooks."
@@ -115,7 +115,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_issues",
+        name = "github-workflow-issues",
         description = "Issue lifecycle, labels, milestones, assignees, comments, reactions."
     )]
     async fn github_workflow_issues_prompt(&self) -> Vec<PromptMessage> {
@@ -126,7 +126,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_actions_ci",
+        name = "github-workflow-actions-ci",
         description = "GitHub Actions workflows, runs, artifacts, secrets/variables, \
                         self-hosted runners, hosted compute, check-runs."
     )]
@@ -138,7 +138,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_orgs_teams",
+        name = "github-workflow-orgs-teams",
         description = "Organizations, teams, enterprise teams/memberships, members, outside \
                         collaborators."
     )]
@@ -150,7 +150,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_security_suite",
+        name = "github-workflow-security-suite",
         description = "Code scanning, secret scanning, code security configurations, \
                         Dependabot, security advisories, dependency graph, private \
                         registries."
@@ -163,7 +163,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_apps_auth_billing",
+        name = "github-workflow-apps-auth-billing",
         description = "GitHub Apps/installations, OAuth apps, OIDC, billing, credentials, \
                         API insights."
     )]
@@ -175,7 +175,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_packages_migrations_gists",
+        name = "github-workflow-packages-migrations-gists",
         description = "Packages, import/export migrations, gists."
     )]
     async fn github_workflow_packages_migrations_gists_prompt(&self) -> Vec<PromptMessage> {
@@ -186,7 +186,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_codespaces_copilot",
+        name = "github-workflow-codespaces-copilot",
         description = "Codespaces, Copilot, Copilot Spaces, agents/agent tasks, GitHub \
                         Classroom."
     )]
@@ -198,7 +198,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_projects",
+        name = "github-workflow-projects",
         description = "Projects (v2), campaigns."
     )]
     async fn github_workflow_projects_prompt(&self) -> Vec<PromptMessage> {
@@ -209,7 +209,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_users_activity",
+        name = "github-workflow-users-activity",
         description = "User profile/keys/social graph, activity feed, starring/watching, \
                         notifications."
     )]
@@ -221,7 +221,7 @@ impl McpifyServer {
     }
 
     #[prompt(
-        name = "github_workflow_meta_diagnostics",
+        name = "github-workflow-meta-diagnostics",
         description = "Thin pointer to read-only utility signals: API meta, rate limits, \
                         code search, emojis, gitignore templates, licenses, code-of-conduct \
                         templates, markdown rendering."

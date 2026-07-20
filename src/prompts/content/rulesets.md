@@ -5,7 +5,7 @@ mechanism that supersedes classic branch protection — safely, verifying
 what it would actually enforce before it starts blocking anything.
 
 This sub-workflow is self-contained and delegable: if you were routed here
-from `github_workflow`, or your environment supports running sub-tasks in
+from `github-workflow`, or your environment supports running sub-tasks in
 an isolated context, this prompt's own text plus the parameters above is
 everything you need — report back only a short summary when done, not the
 full step-by-step trace.
@@ -98,8 +98,8 @@ the ruleset again) that `enforcement` now actually reads `active`.
 ## Composing with other workflows
 
 This supersedes the classic branch-protection flow described in
-`github_workflow_repos` — if the user already has classic branch
+`github-workflow-repos` — if the user already has classic branch
 protection on `target_ref_pattern`, mention that migrating to a ruleset
 doesn't automatically remove it, and ask whether they want the old
 protection removed once the ruleset is active. Bypass-actor teams are
-covered in more depth by `github_workflow_orgs_teams`.
+covered in more depth by `github-workflow-orgs-teams`.

@@ -218,7 +218,7 @@ impl ServerHandler for McpifyServer {
         .with_instructions(
             "Exposes exactly 3 tools -- search, get, call -- backed by an embedded \
              semantic database, so you never need the full API surface in context. \
-             Also exposes MCP prompts -- start with the `github_workflow` prompt for \
+             Also exposes MCP prompts -- start with the `github-workflow` prompt for \
              guided, multi-step help with common GitHub management tasks."
                 .to_string(),
         )
