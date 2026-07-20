@@ -133,7 +133,7 @@ Argument structs go in `src/prompts/mod.rs`, `#[derive(Deserialize, schemars::Js
 
 ### Prompt inventory
 
-GitHub's catalog is ~9x larger by raw `operation_id`-prefix count than a domain like RabbitMQ's, so a 1:1 mapping from raw prefix to prompt would produce 40+ prompts — unwieldy for `prompts/list` and for a human picking from a menu. Instead, group by what a user is actually trying to accomplish, folding related raw prefixes together (e.g. `code-scanning`/`secret-scanning`/`code-security`/`dependabot`/`security-advisories`/`dependency-graph`/`private-registries` all become one "security suite" prompt). This yields 12 sub-workflow prompts (still proportionate to RabbitMQ's ~10, given the much larger domain) plus the master:
+GitHub's catalog spans ~46 raw `operation_id` prefixes, so a 1:1 mapping from raw prefix to prompt would produce 40+ prompts — unwieldy for `prompts/list` and for a human picking from a menu. Instead, group by what a user is actually trying to accomplish, folding related raw prefixes together (e.g. `code-scanning`/`secret-scanning`/`code-security`/`dependabot`/`security-advisories`/`dependency-graph`/`private-registries` all become one "security suite" prompt). This yields 12 sub-workflow prompts plus the master:
 
 | name | covers (raw `operation_id` prefixes) | arguments |
 |---|---|---|
@@ -192,7 +192,7 @@ Given that, the actual lever is keeping each individual `content/*.md` proportio
 - **Multi-resource, order-dependent, forked domains** (`pull_request`, and any others that turn out to genuinely need it, e.g. `actions_ci`'s secret-before-workflow-run ordering) can run longer but should still target roughly **60-120 lines**, not 200+. If a domain's steps sprawl past that, split it into its own sub-workflow rather than growing it in place.
 - **Broader CRUD-ish domains without a real fork or strict ordering** (`repos`, `issues`, `orgs_teams`, `security_suite`, `apps_auth_billing`, `packages_migrations_gists`, `codespaces_copilot`, `projects`, `users_activity`) should be short, roughly **20-50 lines**: what the domain covers, the agnostic search-language pattern, and 1-2 sentences on any real gotcha, not a padded numbered-step scaffold for what's really a single search-then-call action per resource.
 - **`github_workflow_meta_diagnostics`** should be the shortest of all — a single paragraph.
-- **`master.md`** must stay a lean menu: one line per sub-workflow (name, one-sentence when-to-use) plus brief goal-matching guidance, not a summary of each sub-workflow's internal steps. Target **under 70 lines** (13 entries vs. RabbitMQ-scale's 11, so allow a little more room than a strict 60-line cap).
+- **`master.md`** must stay a lean menu: one line per sub-workflow (name, one-sentence when-to-use) plus brief goal-matching guidance, not a summary of each sub-workflow's internal steps. Target **under 70 lines** for the 13-entry menu.
 
 These are targets to keep content proportional and reviewable, not hard limits enforced by code — call it out in review if a draft `.md` file overshoots its band without a real reason.
 
@@ -236,3 +236,25 @@ This repo's existing convention, confirmed from git history and `.github/workflo
 3. Bump `version` in `Cargo.toml` (and let `Cargo.lock` follow via `cargo check`/`cargo build`), commit as `chore(release): bump version to X.Y.Z` — matching prior release commits' exact message shape. Current version is `0.5.8`; default to `0.5.9` unless the implementation commit's conventional-commit type argues for a minor bump instead — confirm what actually landed before choosing.
 4. `git tag vX.Y.Z` on that bump commit (matching the `v*.*.*` pattern `release.yml` listens for).
 5. `git push` the branch, then `git push --tags` (or `git push origin vX.Y.Z`) — confirm with the user before pushing, since pushes and tag creation are confirmed, not assumed.
+
+## Extension: rulesets, environments/deployments/Pages, and README documentation
+
+Shipped in `v0.6.0`, the prompts capability's first release covered 12 sub-workflows. A systematic follow-up pass over the operation catalog — decompressing and querying all 5 stores (`gh-2026-03-10` 1,206 ops, `ghec-2026-03-10` 1,446, `ghes-3.21` 1,092, `ghes-3.20` 1,082, `ghes-3.19` 1,029) and cross-referencing every existing `content/*.md` file against it — found real gaps: multi-step, order-dependent, or forkable domains that the 12 prompts either didn't mention at all, or named only in passing.
+
+**Two new prompts** (bringing the total to 15: 1 master + 14 sub-workflows):
+
+- `github_workflow_rulesets` — repository/org/enterprise rulesets (`repos/create-repo-ruleset`, `repos/create-org-ruleset`, `orgs/get-org-ruleset-history`, etc., 14 ops in `gh`), the mechanism that supersedes classic branch protection. Real sequencing the prompt guides: pick a scope (repo/org, or enterprise — confirmed present only on `ghec`/`ghes`, not `gh`), pick a target and enforcement mode (`evaluate` — a dry run — vs. `active`), define rules and bypass actors, verify the dry run against real activity, and only then flip enforcement on.
+- `github_workflow_environments_deployments` — deployment environments, deployments, and GitHub Pages (`repos/create-or-update-environment`, `repos/create-deployment`, `repos/create-deployment-status`, `repos/create-deployment-branch-policy`, `repos/create-deployment-protection-rule`, `actions/get-pending-deployments-for-run`, `actions/review-pending-deployments-for-run`, `repos/create-pages-site`, `repos/create-pages-deployment`, etc. — confirmed 24 environment/deployment ops + 12 Pages ops, identical counts across all 5 stores). Real sequencing: an environment must exist before protection rules attach; a deployment's status is posted separately through an explicit lifecycle, not implied by the create call; a protected environment pauses an Actions run for an approval gate that must be surfaced, not assumed away. Pages has its own branch-based-vs-Actions-based fork.
+
+Both follow the same argument shape `github_workflow_pull_request` already established: every field `Option<String>`, a `render_context_header` call, and a full Step 0-5 worked-example `content/*.md` file (`rulesets.md`, `environments_deployments.md`).
+
+**Enrichment, not new prompts, for domains that were real but already routed:**
+
+- `content/security_suite.md` gained paragraphs on code-scanning autofix's async create→poll→commit sequencing (confirmed GH/GHEC-only — 0 ops in all 3 `ghes` stores) and secret-scanning push-protection-bypass's own small fork (request an override vs. remove the secret).
+- `content/repos.md` gained paragraphs on the git-data-API-vs-single-file-contents-API fork for atomic multi-file commits (blob→tree→commit→ref ordering), the release publishing pipeline (draft → upload assets → publish → optional immutable-releases toggle), and a shorter note on webhook delivery debugging.
+
+Checked and rejected as workflow candidates: org creation from scratch (no such REST operation exists in any store), `sponsors`/`discussions` (absent from the REST catalog entirely — GraphQL-only on github.com), `code-quality/*` (pure thin CRUD, no real sequencing).
+
+**Test coverage was written alongside the new router methods this time**, not as a follow-up fix — the `v0.6.0` release's CI coverage-gate failure (84.65% against the 85% minimum, because 11 new prompt methods shipped with no test touching them) was a direct lesson: `tests/prompts_workflow.rs` gained the two new prompts in its name-list/argument assertions plus dedicated echo-supplied/all-missing round-trip tests for each (mirroring the existing `pull_request` tests), verified locally via `bash scripts/coverage.sh` (86.39%) before committing rather than relying on CI to catch a regression.
+
+**README.md**, which had never mentioned the prompts feature at all, gained a `### Guided workflow prompts` subsection inside `## Usage` (after `### Connect an MCP client`, before `## Docker`) — a reference table of all 14 sub-workflow prompts with their `router.rs` descriptions, matching the house style of the existing Configuration/resilience-knobs tables — plus an update to the file's one existing scope-claim sentence (originally "Exposes exactly 3 tools...") to also mention the prompts capability.
