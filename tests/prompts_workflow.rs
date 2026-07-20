@@ -148,6 +148,42 @@ async fn pull_request_prompt_with_no_arguments_lists_every_field_as_missing() {
 }
 
 #[tokio::test]
+async fn every_argument_less_sub_workflow_prompt_returns_its_own_guided_content() {
+    let client = connected_client().await;
+
+    for name in [
+        "github_workflow_repos",
+        "github_workflow_issues",
+        "github_workflow_actions_ci",
+        "github_workflow_orgs_teams",
+        "github_workflow_security_suite",
+        "github_workflow_apps_auth_billing",
+        "github_workflow_packages_migrations_gists",
+        "github_workflow_codespaces_copilot",
+        "github_workflow_projects",
+        "github_workflow_users_activity",
+        "github_workflow_meta_diagnostics",
+    ] {
+        let result = client
+            .get_prompt(GetPromptRequestParams::new(name))
+            .await
+            .unwrap_or_else(|err| panic!("prompts/get failed for {name}: {err}"));
+        assert_eq!(
+            result.messages.len(),
+            1,
+            "prompt {name} returned no message"
+        );
+        let text = text_of(&result);
+        assert!(
+            text.contains("Sub-workflow"),
+            "prompt {name} content missing its own heading, got: {text}"
+        );
+    }
+
+    drop(client);
+}
+
+#[tokio::test]
 async fn server_info_advertises_the_prompts_capability() {
     let info = server().get_info();
     assert!(info.capabilities.prompts.is_some());
