@@ -10,7 +10,23 @@ readme = "README.md"
 authors = ["Luciano Evaristo Guerche (Gorše)"]
 keywords = ["mcp", "github", "cli", "api"]
 categories = ["command-line-utilities", "api-bindings"]
-exclude = ["/.github", "/.mcpify", "/docs", "/scripts", "/openapi", "/Dockerfile", "/docker-compose.yml", "/.dockerignore", "/.env.example", "/mcpify.yaml"]
+exclude = [
+    "/.github",
+    "/.mcpify",
+    "/docs",
+    "/scripts",
+    "/openapi",
+    "/Dockerfile",
+    "/docker-compose.yml",
+    "/.dockerignore",
+    "/.env.example",
+    "/mcpify.yaml",
+    "/src/validation/generated_schemas.json.zst",
+    "/src/validation/generated_schemas_vghec-2026-03-10.json.zst",
+    "/src/validation/generated_schemas_vghes-3.21.json.zst",
+    "/src/validation/generated_schemas_vghes-3.20.json.zst",
+    "/src/validation/generated_schemas_vghes-3.19.json.zst",
+]
 
 [lib]
 name = "github_mcp"
