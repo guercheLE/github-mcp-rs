@@ -251,8 +251,12 @@ mod tests {
     impl rmcp::ClientHandler for TestClient {}
 
     fn server() -> McpifyServer {
+        // Keep the known-operation call local and guaranteed to fail fast.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let address = listener.local_addr().unwrap();
+        drop(listener);
         let config: Config = serde_json::from_value(serde_json::json!({
-            "url": "https://api.example.test",
+            "url": format!("http://{address}"),
             "auth_method": "pat"
         }))
         .unwrap();
@@ -336,6 +340,17 @@ mod tests {
 
     #[tokio::test]
     async fn mcp_protocol_routes_search_get_and_call_requests() {
+        tokio::time::timeout(
+            std::time::Duration::from_secs(120),
+            mcp_protocol_routes_search_get_and_call_requests_inner(),
+        )
+        .await
+        .expect(
+            "mcp protocol test timed out after 120s — the server task likely panicked mid-request",
+        );
+    }
+
+    async fn mcp_protocol_routes_search_get_and_call_requests_inner() {
         let (server_transport, client_transport) = tokio::io::duplex(64 * 1024);
         let server_task = tokio::spawn(async move {
             server().serve(server_transport).await?.waiting().await?;
